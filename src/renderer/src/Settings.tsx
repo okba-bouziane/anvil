@@ -6,10 +6,10 @@ import { Icon } from './Icon'
 const api = window.anvil
 const PROVIDERS: ProviderId[] = ['local', 'anthropic', 'openai', 'custom']
 const BLURB: Record<ProviderId, string> = {
-  local: 'Runs on this Mac and works with no internet. Your code stays here.',
+  local: 'Runs on this computer with MLX and works with no internet. Your code stays here.',
   anthropic: 'Claude models through your API key. Your code is sent to Anthropic.',
   openai: 'OpenAI models through your API key. Your code is sent to OpenAI.',
-  custom: 'Any server with an OpenAI-style API, such as Ollama or LM Studio.'
+  custom: 'Any server with an OpenAI-style API. Ollama and LM Studio run on this computer, work with no internet and keep your code here.'
 }
 
 const PRESETS = [
@@ -18,7 +18,7 @@ const PRESETS = [
 ]
 
 function LocalSetupCard({ setup, hasProject, onRun }: { setup: LocalSetup; hasProject: boolean; onRun(command: string): void }) {
-  if (!setup.platformOk) return <div className="setup"><b>Local models here need a Mac with Apple Silicon.</b><p>Use a Custom server such as Ollama, or a cloud provider.</p></div>
+  if (!setup.platformOk) return <div className="setup"><b>MLX only runs on Macs with Apple Silicon.</b><p>For a local model on this computer, install <b>Ollama</b> or <b>LM Studio</b>, download a model there, then pick it under Custom server.</p></div>
   if (setup.serverInstalled && setup.hasModels) return null
   const step = (done: boolean, title: string, command: string) => (
     <div className={`setup-step ${done ? 'done' : ''}`}>
@@ -136,7 +136,7 @@ export function SettingsModal({ settings, initial, onSettings, onStatus, onClose
             {tab !== 'local' && (
               <div className="field"><span>API key{tab === 'custom' ? ' (if the server needs one)' : ''}</span>
                 {keys?.[tab]
-                  ? <div className="row key-row"><span className="key-saved"><Icon name="check" size={13} />Saved in the macOS Keychain</span><button onClick={() => void api.clearApiKey(tab).then(() => { refreshKeys(); setModels([]); onStatus() }).catch(onError)}>Remove</button></div>
+                  ? <div className="row key-row"><span className="key-saved"><Icon name="check" size={13} />Saved in this computer's secure storage</span><button onClick={() => void api.clearApiKey(tab).then(() => { refreshKeys(); setModels([]); onStatus() }).catch(onError)}>Remove</button></div>
                   : <div className="row key-row"><input id="api-key" type="password" autoComplete="off" spellCheck={false} value={key} placeholder="Paste your key" onChange={(e) => setKey(e.target.value)} /><button className="primary" disabled={!key.trim()} onClick={saveKey}>Save</button></div>}
               </div>
             )}

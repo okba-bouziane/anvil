@@ -15,4 +15,5 @@ api.onTerminal = (listener) => {
   ipcRenderer.on('anvil:terminal', wrapped)
   return () => ipcRenderer.removeListener('anvil:terminal', wrapped)
 }
+api.platform = process.platform
 contextBridge.exposeInMainWorld('anvil', api)

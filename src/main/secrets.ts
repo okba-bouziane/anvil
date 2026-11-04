@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { ProviderId } from '../shared/types'
 
-/** API keys are encrypted with the macOS Keychain and only ever used in this process. */
+/** API keys are encrypted with the system's secure storage and only ever used in this process. */
 export class Secrets {
   private memory = new Map<ProviderId, string>()
 
@@ -24,7 +24,9 @@ export class Secrets {
 
   set(provider: ProviderId, key: string): void {
     if (this.memoryOnly) return void this.memory.set(provider, key)
-    if (!safeStorage.isEncryptionAvailable()) throw new Error('This Mac cannot encrypt the key right now, so it was not saved.')
+    // On Linux with no keyring, Electron would "encrypt" with a fixed password. That isn't protection.
+    const noKeyring = process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text'
+    if (!safeStorage.isEncryptionAvailable() || noKeyring) throw new Error('This computer has no secure storage available, such as GNOME Keyring or KWallet, so the key was not saved.')
     this.write({ ...this.read(), [provider]: safeStorage.encryptString(key).toString('base64') })
   }
 

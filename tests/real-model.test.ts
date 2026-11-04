@@ -15,7 +15,7 @@ function project(): string {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-real-')))
   fs.mkdirSync(path.join(root, 'src'))
   fs.mkdirSync(path.join(root, 'node_modules'))
-  fs.symlinkSync(path.resolve('node_modules/typescript'), path.join(root, 'node_modules/typescript'))
+  fs.symlinkSync(path.resolve('node_modules/typescript'), path.join(root, 'node_modules/typescript'), 'junction')
   fs.writeFileSync(path.join(root, 'package.json'), '{"name":"demo","type":"module"}\n')
   fs.writeFileSync(path.join(root, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', noEmit: true, skipLibCheck: true, types: [] }, include: ['src'] }))
   fs.writeFileSync(path.join(root, 'src/math.ts'), 'export function add(a: number, b: number): number {\n  return a + b\n}\n')

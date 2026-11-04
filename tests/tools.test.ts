@@ -18,12 +18,12 @@ describe('safePath', () => {
   })
   it('refuses paths outside', () => {
     expect(() => safePath(root, '../x')).toThrow(/outside/)
-    expect(() => safePath(root, '/etc/passwd')).toThrow(/outside/)
+    expect(() => safePath(root, path.resolve(root, '../elsewhere/passwd'))).toThrow(/outside/)
     expect(() => safePath(root, '~/x')).toThrow(/relative/)
   })
   it('refuses symlinks that lead outside', () => {
     const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'))
-    fs.symlinkSync(outside, path.join(root, 'link'))
+    fs.symlinkSync(outside, path.join(root, 'link'), 'junction')
     expect(() => safePath(root, 'link/secret.txt')).toThrow(/outside/)
   })
 })
@@ -71,16 +71,18 @@ it('keeps the end of long output', () => {
 describe('runCommand', () => {
   const never = () => new AbortController().signal
   it('returns output and exit code', async () => {
-    expect(await runCommand(root, 'echo hi; exit 3', never())).toMatchObject({ code: 3, output: 'hi\n', timedOut: false })
+    const result = await runCommand(root, 'node -e "console.log(\'hi\');process.exit(3)"', never())
+    expect(result).toMatchObject({ code: 3, timedOut: false })
+    expect(result.output.trim()).toBe('hi')
   })
   it('stops at the time limit', async () => {
-    const result = await runCommand(root, 'sleep 30', never(), 200)
+    const result = await runCommand(root, 'node -e "setTimeout(()=>{},30000)"', never(), 500)
     expect(result.timedOut).toBe(true)
   })
   it('stops when cancelled', async () => {
     const abort = new AbortController()
-    const run = runCommand(root, 'sleep 30', abort.signal)
-    setTimeout(() => abort.abort(), 100)
+    const run = runCommand(root, 'node -e "setTimeout(()=>{},30000)"', abort.signal)
+    setTimeout(() => abort.abort(), 500)
     expect((await run).code).not.toBe(0)
   })
 })

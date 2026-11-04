@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { createRequire } from 'node:module'
 import type TS from 'typescript'
+import { toPosix } from './platform'
 
 export interface CheckResult {
   ran: boolean
@@ -39,7 +40,7 @@ function checkProject(ts: typeof TS, root: string, tsconfig: string, touched: st
   const dir = path.dirname(tsconfig)
   const loaded = ts.readConfigFile(tsconfig, ts.sys.readFile)
   const parsed = ts.parseJsonConfigFileContent(loaded.config ?? {}, ts.sys, dir)
-  const absTouched = touched.map((rel) => path.join(root, rel))
+  const absTouched = touched.map((rel) => toPosix(path.join(root, rel)))
   const fileNames = [...new Set([...parsed.fileNames, ...absTouched])]
   const edited = new Map<string, string>()
   const versions = new Map<string, number>()
@@ -94,7 +95,7 @@ function checkProject(ts: typeof TS, root: string, tsconfig: string, touched: st
         if (d.category !== ts.DiagnosticCategory.Error || errors.length >= 15) continue
         const message = ts.flattenDiagnosticMessageText(d.messageText, '\n').split('\n')[0]
         const source = d.file?.text
-        let where = path.relative(root, file)
+        let where = toPosix(path.relative(root, file))
         let lineText = ''
         if (source !== undefined && d.start !== undefined) {
           const pos = d.file!.getLineAndCharacterOfPosition(d.start)
@@ -111,7 +112,7 @@ function checkProject(ts: typeof TS, root: string, tsconfig: string, touched: st
     return {
       errors,
       fixedCount,
-      fixedImports: [...edited].map(([file, content]) => ({ file: path.relative(root, file), content }))
+      fixedImports: [...edited].map(([file, content]) => ({ file: toPosix(path.relative(root, file)), content }))
     }
   } finally {
     service.dispose()

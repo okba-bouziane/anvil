@@ -123,7 +123,7 @@ export function effectiveSettings(settings: Settings): Settings {
 
 const MEMORY_LIMIT_GB = 9
 
-/** Models already downloaded on this Mac. Big ones get a warning: one crashed this kind of machine in testing. */
+/** Models already downloaded on this computer. Big ones get a warning: one crashed this kind of machine in testing. */
 export function localModels(hub = path.join(os.homedir(), '.cache/huggingface/hub'), memoryGb = os.totalmem() / 1024 ** 3): ModelOption[] {
   let dirs: string[]
   try {
@@ -151,7 +151,7 @@ export function localModels(hub = path.join(os.homedir(), '.cache/huggingface/hu
     if (!hasConfig || !size) continue
     const sizeGb = size / 1e9
     const tooBig = sizeGb > (memoryGb * MEMORY_LIMIT_GB) / 16
-    out.push({ id, sizeGb, ...(tooBig ? { warning: `${sizeGb.toFixed(1)} GB is a lot for ${Math.round(memoryGb)} GB of memory. It may run slowly or freeze this Mac.` } : {}) })
+    out.push({ id, sizeGb, ...(tooBig ? { warning: `${sizeGb.toFixed(1)} GB is a lot for ${Math.round(memoryGb)} GB of memory. It may run slowly or freeze this computer.` } : {}) })
   }
   return out.sort((a, b) => (a.sizeGb ?? 0) - (b.sizeGb ?? 0))
 }

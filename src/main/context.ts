@@ -5,6 +5,7 @@ import { TOOL_INSTRUCTIONS } from './protocol'
 import { readFileTool, safePath, walkFiles } from './tools'
 
 const TREE_LIMIT = 200
+const OS_NAME = process.platform === 'win32' ? 'Windows (commands run in cmd.exe)' : process.platform === 'darwin' ? 'macOS' : 'Linux'
 const STOP = new Set(['the', 'and', 'for', 'with', 'this', 'that', 'add', 'make', 'fix', 'change', 'file', 'code', 'please', 'from', 'into', 'have', 'should', 'need', 'want', 'create', 'update', 'remove', 'when', 'then', 'not', 'are', 'but', 'can', 'all'])
 
 export function projectTree(root: string): string {
@@ -35,6 +36,7 @@ function projectRules(root: string): string {
 
 export const systemPrompt = (root: string): string => `You are Anvil, a coding assistant working in a project on the user's Mac.
 Project root: ${path.basename(root)}. All paths are relative to it.
+The computer runs ${OS_NAME}, so write commands for that system.
 
 Project files:
 ${projectTree(root)}

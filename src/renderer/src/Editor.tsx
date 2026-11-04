@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FileChange, Hunk } from '../../shared/types'
 import { Icon } from './Icon'
+import { MOD, SHIFT } from './keys'
 import { monaco, OPTIONS } from './monaco'
 
 const api = window.anvil
@@ -141,7 +142,7 @@ function FileView({ path, revision, reveal, onError }: { path: string; revision:
 
   return (
     <>
-      {dirty && <div className="unsaved">Unsaved changes. Press ⌘S to save.</div>}
+      {dirty && <div className="unsaved">Unsaved changes. Press {MOD}S to save.</div>}
       {unreadable && <div className="pane-empty">{unreadable}</div>}
       <div className="monaco-host" ref={host} style={{ display: unreadable ? 'none' : undefined }} />
     </>
@@ -164,7 +165,7 @@ export function EditorPane({ path, tabs, change, revision, gitDiff, reveal, onSe
       <div className="pane-empty welcome">
         <div className="mark" />
         <p>Pick a file, or describe a change in the chat.</p>
-        <div className="keys"><kbd>⌘P</kbd> Open a file <kbd>⇧⌘F</kbd> Search <kbd>⌘J</kbd> Terminal <kbd>⌘,</kbd> Settings</div>
+        <div className="keys"><kbd>{MOD}P</kbd> Open a file <kbd>{SHIFT}{MOD}F</kbd> Search <kbd>{MOD}J</kbd> Terminal <kbd>{MOD},</kbd> Settings</div>
       </div>
     )
   }

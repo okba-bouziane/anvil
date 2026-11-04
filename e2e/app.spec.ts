@@ -33,7 +33,7 @@ async function launch(answers: string[]): Promise<{ app: ElectronApplication; pa
   const lines = Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join('\n') + '\n'
   fs.writeFileSync(path.join(root, 'notes.txt'), lines)
   const model = await fakeModel(answers)
-  fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ baseUrls: { local: model.url }, lastProject: root }))
+  fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ provider: 'local', baseUrls: { local: model.url }, lastProject: root }))
   const app = await electron.launch({ args: ['.'], env: { ...process.env, ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
   const page = await app.firstWindow()
   const errors: string[] = []
@@ -88,9 +88,9 @@ test('reviews edits block by block, then undoes the whole step', async () => {
 })
 
 test('commands wait for approval, and declining does not run them', async () => {
-  const { page, root, close } = await launch(['<run_command>touch ran.txt</run_command>', 'Skipped it.', '<run_command>touch ran2.txt</run_command>', 'Ran it.'])
+  const { page, root, close } = await launch(['<run_command>node -e "require(\'fs\').writeFileSync(\'ran.txt\',\'\')"</run_command>', 'Skipped it.', '<run_command>node -e "require(\'fs\').writeFileSync(\'ran2.txt\',\'\')"</run_command>', 'Ran it.'])
   await ask(page, 'run something')
-  await expect(page.locator('.approval')).toContainText('touch ran.txt')
+  await expect(page.locator('.approval')).toContainText('ran.txt')
   await page.getByRole('button', { name: "Don't run" }).click()
   await expect(page.locator('.msg.assistant').last()).toContainText('Skipped it.')
   expect(fs.existsSync(path.join(root, 'ran.txt'))).toBe(false)
@@ -150,7 +150,7 @@ test('modes, chats, tabs, quick open and @ files work', async () => {
   await expect(page.locator('.msg.user')).toHaveText('plan it')
 
   // Quick open makes a tab.
-  await page.keyboard.press('Meta+p')
+  await page.keyboard.press('ControlOrMeta+p')
   await page.locator('#quick-open').fill('notes')
   await page.locator('#quick-open').press('Enter')
   await expect(page.locator('.tab.active')).toContainText('notes.txt')
@@ -166,7 +166,7 @@ test('API keys are masked and never reach the window, and models can be switched
   await expect(page.locator('#api-key')).toHaveAttribute('type', 'password')
   await page.locator('#api-key').fill('sk-secret-value')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
-  await expect(page.locator('.key-saved')).toContainText('Keychain')
+  await expect(page.locator('.key-saved')).toContainText('secure storage')
   expect(await page.evaluate(() => JSON.stringify(window.localStorage) + document.body.innerText)).not.toContain('sk-secret-value')
   expect(JSON.stringify(await page.evaluate(() => window.anvil.getSettings()))).not.toContain('sk-secret-value')
   await page.getByRole('button', { name: 'Use Anthropic' }).click()
@@ -209,10 +209,10 @@ test('the file tree creates, renames and deletes', async () => {
 
 test('the terminal runs real commands in the project', async () => {
   const { page, root, close } = await launch([])
-  await page.keyboard.press('Meta+j')
+  await page.keyboard.press('ControlOrMeta+j')
   await expect(page.locator('.xterm')).toBeVisible()
   await page.waitForTimeout(800)
-  await page.keyboard.type('touch from-terminal.txt && echo done-$((40+2))\n')
+  await page.keyboard.type(process.platform === 'win32' ? 'New-Item from-terminal.txt; echo done-42\r' : 'touch from-terminal.txt && echo done-$((40+2))\n')
   await expect.poll(() => fs.existsSync(path.join(root, 'from-terminal.txt'))).toBe(true)
   await expect(page.locator('.xterm-rows')).toContainText('done-42')
   await page.getByRole('button', { name: 'New terminal' }).click()
@@ -223,7 +223,7 @@ test('the terminal runs real commands in the project', async () => {
 
 test('project search opens the right line', async () => {
   const { page, close } = await launch([])
-  await page.keyboard.press('Meta+Shift+f')
+  await page.keyboard.press('ControlOrMeta+Shift+f')
   await page.locator('#project-search').fill('line 17')
   await page.locator('#project-search').press('Enter')
   await expect(page.locator('.search-count')).toContainText('1 result in 1 file')

@@ -13,7 +13,7 @@ beforeEach(() => {
 })
 const link = () => {
   fs.mkdirSync(path.join(root, 'node_modules'))
-  fs.symlinkSync(nm, path.join(root, 'node_modules/typescript'))
+  fs.symlinkSync(nm, path.join(root, 'node_modules/typescript'), 'junction')
 }
 
 it('adds a missing import from the project itself', () => {

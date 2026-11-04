@@ -4,8 +4,8 @@
   --text:#ecedf2; --text2:#a4a6b3; --text3:#6d6f7c;
   --accent:#7c7ff5; --accent2:#a3a6ff; --accent-bg:#7c7ff51c;
   --green:#4ade80; --red:#fb7185; --amber:#fbbf24;
-  --ui:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;
-  --mono:'SF Mono',ui-monospace,Menlo,monospace;
+  --ui:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI','Helvetica Neue',Ubuntu,Cantarell,'Noto Sans',sans-serif;
+  --mono:'SF Mono',ui-monospace,Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace;
   --radius:10px; --ease:cubic-bezier(.2,.7,.3,1);
   color-scheme:dark;
 }
@@ -310,3 +310,6 @@ button.large { padding:7px 18px; font-size:13.5px; border-radius:10px; }
 .setup-step.done .setup-mark { background:var(--accent); border-color:var(--accent); }
 .setup-step.done b { color:var(--text3); }
 .presets button { font-size:12px; }
+
+/* Only macOS has the inset traffic lights that the title bar makes room for and drags from. */
+.app:not(.platform-darwin) .topbar { padding-left:14px; -webkit-app-region:no-drag; }

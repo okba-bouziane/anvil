@@ -3,6 +3,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { Terminal as XTerm } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
 import { Icon } from './Icon'
+import { MOD } from './keys'
 
 const api = window.anvil
 const THEME = { background: '#0c0d10', foreground: '#d8d9e2', cursor: '#a3a6ff', selectionBackground: '#7c7ff544', black: '#16171d', brightBlack: '#6d6f7c' }
@@ -13,7 +14,7 @@ function Shell({ id, visible, pending, onSent }: { id: string; visible: boolean;
   const fit = useRef<FitAddon | null>(null)
 
   useEffect(() => {
-    const created = new XTerm({ fontFamily: "'SF Mono', ui-monospace, Menlo, monospace", fontSize: 12, lineHeight: 1.25, cursorBlink: true, allowProposedApi: false, theme: THEME, scrollback: 5000 })
+    const created = new XTerm({ fontFamily: "'SF Mono', ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', 'Liberation Mono', monospace", fontSize: 12, lineHeight: 1.25, cursorBlink: true, allowProposedApi: false, theme: THEME, scrollback: 5000 })
     const addon = new FitAddon()
     created.loadAddon(addon)
     created.open(host.current!)
@@ -93,7 +94,7 @@ export function TerminalPanel({ open, projectKey, command, onCommandDone, onClos
         ))}
         <button className="icon-btn" aria-label="New terminal" title="New terminal" onClick={add}><Icon name="plus" size={13} /></button>
         <span className="spacer" />
-        <button className="icon-btn" aria-label="Hide terminal" title="Hide terminal (⌘J)" onClick={onClose}><Icon name="close" size={13} /></button>
+        <button className="icon-btn" aria-label="Hide terminal" title={`Hide terminal (${MOD}J)`} onClick={onClose}><Icon name="close" size={13} /></button>
       </div>
       <div className="terminal-body">
         {shells.map((id) => <Shell key={id} id={id} visible={open && id === active} pending={id === active ? command : null} onSent={onCommandDone} />)}

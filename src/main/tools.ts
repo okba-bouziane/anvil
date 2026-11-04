@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { spawn } from 'node:child_process'
+import { killTree, spawnShell, toPosix } from './platform'
 
 const IGNORED = new Set(['node_modules', '.git', 'dist', 'out', 'build', '.angular', '.next', 'coverage', '.venv', '__pycache__', '.DS_Store'])
 const READ_LIMIT_LINES = 400
@@ -30,13 +30,14 @@ export function safePath(root: string, input: unknown): string {
   let given = input.trim()
   if (given.startsWith('~/') || given === '~') throw new Error('Use a path relative to the project root, not ~')
   if (path.isAbsolute(given) && (given === root || given.startsWith(root + path.sep))) given = path.relative(root, given) || '.'
+  if (process.platform === 'win32') given = given.replace(/\\/g, '/')
   const full = path.resolve(realRoot, given)
   let existing = full
   while (!fs.existsSync(existing)) existing = path.dirname(existing)
   const real = fs.realpathSync(existing)
   const inside = (p: string) => p === realRoot || p.startsWith(realRoot + path.sep)
   if (!inside(full) || !inside(real)) throw new Error(`${input} is outside the project`)
-  return path.relative(realRoot, full) || '.'
+  return toPosix(path.relative(realRoot, full)) || '.'
 }
 
 export function assertWritable(rel: string): void {
@@ -119,7 +120,7 @@ export function* walkFiles(root: string, rel = '.'): Generator<string> {
   }
   for (const e of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     if (IGNORED.has(e.name) || e.isSymbolicLink()) continue
-    const child = rel === '.' ? e.name : path.join(rel, e.name)
+    const child = rel === '.' ? e.name : `${rel}/${e.name}`
     if (e.isDirectory()) yield* walkFiles(root, child)
     else yield child
   }
@@ -185,16 +186,10 @@ export interface CommandResult {
 
 export function runCommand(cwd: string, command: string, signal: AbortSignal, timeoutMs = COMMAND_TIMEOUT_MS, onOutput?: (text: string) => void): Promise<CommandResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn('/bin/zsh', ['-lc', command], { cwd, detached: true, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawnShell(command, cwd, ['ignore', 'pipe', 'pipe'])
     let output = ''
     let timedOut = false
-    const kill = () => {
-      try {
-        if (child.pid) process.kill(-child.pid, 'SIGTERM')
-      } catch {
-        /* already gone */
-      }
-    }
+    const kill = () => killTree(child)
     const timer = setTimeout(() => {
       timedOut = true
       kill()
@@ -204,8 +199,8 @@ export function runCommand(cwd: string, command: string, signal: AbortSignal, ti
       output = trimOutput(output + data.toString(), OUTPUT_LIMIT * 2)
       onOutput?.(data.toString())
     }
-    child.stdout.on('data', add)
-    child.stderr.on('data', add)
+    child.stdout!.on('data', add)
+    child.stderr!.on('data', add)
     child.on('error', reject)
     child.on('close', (code) => {
       clearTimeout(timer)

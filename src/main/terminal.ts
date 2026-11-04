@@ -2,6 +2,7 @@ import os from 'node:os'
 import { randomUUID } from 'node:crypto'
 import * as pty from 'node-pty'
 import type { TerminalEvent } from '../shared/types'
+import { interactiveShell } from './platform'
 
 /** Real shells for the Terminal panel. They run as the user, like any other terminal app. */
 export class Terminals {
@@ -11,8 +12,8 @@ export class Terminals {
 
   create(cwd: string): string {
     const id = randomUUID().slice(0, 8)
-    const shell = process.env.SHELL || '/bin/zsh'
-    const term = pty.spawn(shell, ['-l'], {
+    const { file, args } = interactiveShell()
+    const term = pty.spawn(file, args, {
       name: 'xterm-256color',
       cwd: cwd || os.homedir(),
       cols: 100,

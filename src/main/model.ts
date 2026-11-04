@@ -1,8 +1,9 @@
-import { execFileSync, spawn, type ChildProcess } from 'node:child_process'
+import { execFileSync, type ChildProcess } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import type { ModelStatus, Settings } from '../shared/types'
+import { canRunMlx, killTree, spawnShell } from './platform'
 
 export interface ToolCall {
   id: string
@@ -173,6 +174,7 @@ export function serverCommand(model: string, port: number, totalMemory = os.tota
 
 function pidsOnPort(port: number): number[] {
   try {
+    if (!canRunMlx()) return []
     return execFileSync('/usr/sbin/lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN', '-t'], { stdio: ['ignore', 'pipe', 'ignore'] }).toString().split('\n').filter(Boolean).map(Number)
   } catch {
     return []
@@ -193,7 +195,7 @@ export function startModel(model: string, baseUrl: string, logFile: string): voi
   starting = true
   fs.mkdirSync(path.dirname(logFile), { recursive: true })
   const log = fs.openSync(logFile, 'a')
-  server = spawn('/bin/zsh', ['-lc', serverCommand(model, port)], { detached: true, stdio: ['ignore', log, log] })
+  server = spawnShell(serverCommand(model, port), undefined, ['ignore', log, log])
   server.on('exit', () => { server = null; starting = false })
   server.unref()
   setTimeout(() => { starting = false }, 150_000).unref?.()
@@ -201,13 +203,13 @@ export function startModel(model: string, baseUrl: string, logFile: string): voi
 
 export function stopModel(baseUrl: string): void {
   starting = false
-  server?.kill('SIGTERM')
+  if (server) killTree(server)
   stopServerOnPort(portOf(baseUrl))
 }
 
 /** A model the app started should not keep holding gigabytes of memory after the app quits. */
 export function stopOwnServer(): void {
-  server?.kill('SIGTERM')
+  if (server) killTree(server)
 }
 
 export function isServerInstalled(): boolean {

@@ -4,6 +4,7 @@ import { PROVIDER_LABEL } from '../../shared/types'
 import { Chat } from './Chat'
 import { EditorPane } from './Editor'
 import { Icon } from './Icon'
+import { MOD, modPressed } from './keys'
 import { SettingsModal } from './Settings'
 import { Sidebar, type SidebarTab } from './Sidebar'
 import { TerminalPanel } from './Terminal'
@@ -206,7 +207,7 @@ export function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!e.metaKey) return
+      if (!modPressed(e)) return
       if (e.key === 'j' && project) { e.preventDefault(); setTerminalOpen((o) => !o) }
       if (e.key.toLowerCase() === 'f' && e.shiftKey && project) { e.preventDefault(); setTab('search') }
       if (e.key === 'p' && project) { e.preventDefault(); void api.listFiles().then(setFiles); setQuick(true) }
@@ -233,7 +234,7 @@ export function App() {
   const modelName = settings ? (settings.models[provider] || 'No model').split('/').pop() : ''
 
   return (
-    <div className="app">
+    <div className={`app platform-${api.platform}`}>
       <header className="topbar">
         <div className="mark" />
         <span className="brand">Anvil</span>
@@ -247,10 +248,10 @@ export function App() {
           <span className="model-label">{modelName}</span>
           <span className="model-status">{STATUS_LABEL[status]}</span>
         </button>
-        {provider === 'local' && status === 'offline' && <button onClick={() => void api.startModel().then(setStatus).catch(onError)}>Start model</button>}
+        {provider === 'local' && status === 'offline' && api.platform === 'darwin' && <button onClick={() => void api.startModel().then(setStatus).catch(onError)}>Start model</button>}
         {provider === 'local' && status === 'online' && <button disabled={busy} onClick={() => void api.stopModel().then(setStatus).catch(onError)}>Stop model</button>}
-        {project && <button className={`icon-btn ${terminalOpen ? 'on' : ''}`} aria-label="Terminal" title="Terminal (⌘J)" onClick={() => setTerminalOpen(!terminalOpen)}><Icon name="terminal" /></button>}
-        <button className="icon-btn" aria-label="Settings" title="Settings (⌘,)" onClick={() => setModal(provider)}><Icon name="gear" /></button>
+        {project && <button className={`icon-btn ${terminalOpen ? 'on' : ''}`} aria-label="Terminal" title={`Terminal (${MOD}J)`} onClick={() => setTerminalOpen(!terminalOpen)}><Icon name="terminal" /></button>}
+        <button className="icon-btn" aria-label="Settings" title={`Settings (${MOD},)`} onClick={() => setModal(provider)}><Icon name="gear" /></button>
       </header>
       {error && <div className="banner" role="alert" onClick={() => setError(null)}><Icon name="warn" size={13} />{error}<span>Dismiss</span></div>}
       {!project

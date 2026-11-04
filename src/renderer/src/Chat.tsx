@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { AgentMode, ChatSummary, Checkpoint, Settings, Stats, UiItem } from '../../shared/types'
 import { isCloud, PROVIDER_LABEL } from '../../shared/types'
 import { Icon } from './Icon'
+import { MOD } from './keys'
 
 const api = window.anvil
 
@@ -174,7 +175,8 @@ export function Chat(p: ChatProps) {
   }
 
   const percent = Math.min(100, Math.round((p.context.tokens / Math.max(p.context.limit, 1)) * 100))
-  const cloud = settings ? isCloud(settings) : false
+  const cloud = settings ? isCloud(settings) && settings.provider !== 'custom' : false
+  const isRemote = settings ? isCloud(settings) && settings.provider === 'custom' : false
   const modelName = settings ? (settings.models[settings.provider] || 'Pick a model').split('/').pop() : ''
 
   return (
@@ -184,7 +186,7 @@ export function Chat(p: ChatProps) {
           <Icon name="history" size={14} />
           <span>{p.chats.find((c) => c.id === p.activeChat)?.title ?? 'Chat'}</span>
         </button>
-        <button className="icon-btn" aria-label="New chat" title="New chat (⌘N)" disabled={busy || !hasProject} onClick={p.onNewChat}><Icon name="plus" /></button>
+        <button className="icon-btn" aria-label="New chat" title={`New chat (${MOD}N)`} disabled={busy || !hasProject} onClick={p.onNewChat}><Icon name="plus" /></button>
         {showChats && <ChatList chats={p.chats} active={p.activeChat} onClose={() => setShowChats(false)} onPick={(id) => { setShowChats(false); p.onSwitchChat(id) }} onDelete={p.onDeleteChat} />}
       </div>
 
@@ -293,11 +295,11 @@ export function Chat(p: ChatProps) {
               <label className="toggle" title="Edits are kept without review. You can still undo a whole step.">
                 <input type="checkbox" checked={settings.autoAcceptEdits} onChange={(e) => p.onSetting({ autoAcceptEdits: e.target.checked })} /><span className="switch" />Auto-accept edits
               </label>
-              <label className="toggle" title="Commands run without asking. The model could run anything on this Mac.">
+              <label className="toggle" title="Commands run without asking. The model could run anything on this computer.">
                 <input type="checkbox" checked={settings.autoRunCommands} onChange={(e) => p.onSetting({ autoRunCommands: e.target.checked })} /><span className="switch" />Auto-run commands
               </label>
               <span className="spacer" />
-              <span className={cloud ? 'where cloud' : 'where'}>{cloud ? `Sends code to ${PROVIDER_LABEL[settings.provider]}` : 'Stays on this Mac'}</span>
+              <span className={cloud ? 'where cloud' : 'where'}>{cloud ? `Sends code to ${PROVIDER_LABEL[settings.provider]}` : isRemote ? 'Sends code to your server' : 'Stays on this computer'}</span>
             </>
           )}
         </div>

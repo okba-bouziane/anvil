@@ -52,7 +52,7 @@ export const OPTIONS = {
   guides: { indentation: true },
   overviewRulerLanes: 0,
   hideCursorInOverviewRuler: true,
-  fontFamily: "'SF Mono', Menlo, monospace",
+  fontFamily: "'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', 'Liberation Mono', monospace",
   scrollBeyondLastLine: false,
   padding: { top: 10 }
 } as const

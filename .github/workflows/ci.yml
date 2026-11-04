@@ -2,7 +2,6 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
 
 permissions:
@@ -10,7 +9,14 @@ permissions:
 
 jobs:
   test:
-    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      # Hosted Linux machines don't allow Chromium's sandbox. Released apps keep it.
+      ELECTRON_DISABLE_SANDBOX: ${{ matrix.os == 'ubuntu-latest' && '1' || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,4 +27,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - run: xvfb-run -a npx playwright test
+        if: runner.os == 'Linux'
       - run: npx playwright test
+        if: runner.os != 'Linux'

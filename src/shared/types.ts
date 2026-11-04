@@ -154,6 +154,7 @@ export interface ProjectState {
 export type ModelStatus = 'online' | 'offline' | 'starting' | 'nokey'
 
 export interface AnvilApi {
+  platform: string
   getSettings(): Promise<Settings>
   localSetup(): Promise<LocalSetup>
   createPath(path: string, isDir: boolean): Promise<void>

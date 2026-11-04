@@ -11,6 +11,7 @@ import { downloadCommand, INSTALL_COMMAND, isServerInstalled, modelStatus, start
 import { clientFor, effectiveSettings, listModels, localModels } from './providers'
 import { Secrets } from './secrets'
 import { loadSession, saveSession, type Chat } from './session'
+import { canRunMlx } from './platform'
 import { assertWritable, safePath, searchProject, walkFiles } from './tools'
 import { Terminals } from './terminal'
 import { checkFiles } from './tscheck'
@@ -49,11 +50,14 @@ function loadSettings(): void {
   } catch {
     /* first run */
   }
+  // MLX only runs on Apple Silicon. Everywhere else, the first choice for a local model is Ollama.
+  const platformDefaults: Partial<Settings> = canRunMlx() ? {} : { provider: 'custom' }
   settings = {
     ...DEFAULT_SETTINGS,
+    ...platformDefaults,
     ...saved,
     models: { ...DEFAULT_SETTINGS.models, ...saved.models },
-    baseUrls: { ...DEFAULT_SETTINGS.baseUrls, ...saved.baseUrls }
+    baseUrls: { ...DEFAULT_SETTINGS.baseUrls, ...(canRunMlx() ? {} : { custom: 'http://127.0.0.1:11434/v1' }), ...saved.baseUrls }
   }
 }
 
@@ -281,7 +285,7 @@ function handlers() {
     const dir = safePath(p.root, rel)
     return fs.readdirSync(path.join(p.root, dir), { withFileTypes: true })
       .filter((e) => !['.git', 'node_modules', '.DS_Store'].includes(e.name))
-      .map((e) => ({ name: e.name, path: dir === '.' ? e.name : path.join(dir, e.name), isDir: e.isDirectory() }))
+      .map((e) => ({ name: e.name, path: dir === '.' ? e.name : `${dir}/${e.name}`, isDir: e.isDirectory() }))
       .sort((a, b) => Number(b.isDir) - Number(a.isDir) || a.name.localeCompare(b.name))
   })
   handle('listFiles', () => {
@@ -373,8 +377,8 @@ function handlers() {
   handle('terminalResize', (id: string, cols: number, rows: number) => terminals.resize(id, cols, rows))
   handle('terminalKill', (id: string) => terminals.kill(id))
   handle('localSetup', () => ({
-    platformOk: process.platform === 'darwin' && process.arch === 'arm64',
-    serverInstalled: isServerInstalled(),
+    platformOk: canRunMlx(),
+    serverInstalled: canRunMlx() && isServerInstalled(),
     hasModels: localModels().length > 0,
     installCommand: INSTALL_COMMAND,
     downloadCommand: downloadCommand(DEFAULT_SETTINGS.models.local)
@@ -465,8 +469,7 @@ function createWindow(): void {
     minHeight: 640,
     backgroundColor: '#0c0d10',
     title: 'Anvil',
-    titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 16, y: 16 },
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 16, y: 16 } } : { autoHideMenuBar: true }),
     webPreferences: { preload: path.join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true, nodeIntegration: false }
   })
   win.webContents.setWindowOpenHandler(({ url }) => {
