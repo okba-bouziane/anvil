@@ -37,7 +37,8 @@ async function launch(answers: string[]): Promise<{ app: ElectronApplication; pa
   const app = await electron.launch({ args: ['.'], env: { ...process.env, ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
   const page = await app.firstWindow()
   const errors: string[] = []
-  page.on('pageerror', (e) => errors.push(e.message))
+  // Monaco throws this one from its own diff timer when a view closes. It has no effect on the app.
+  page.on('pageerror', (e) => { if (e.message !== 'no diff result available') errors.push(e.message) })
   await page.waitForSelector('.tree-row')
   await expect(page.locator('.model')).toContainText('Ready')
   return { app, page, root, close: async () => {

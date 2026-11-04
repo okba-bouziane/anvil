@@ -2,9 +2,16 @@ import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import './styles.css'
 
-// The editor cancels requests as you type, and reports each one this way. They aren't errors.
+// The editor cancels work as you type or close a view, and reports it as an error. Neither of these is one.
+const harmless = (reason: unknown) => {
+  const error = reason as Error | undefined
+  return error?.name === 'Canceled' || error?.message === 'no diff result available'
+}
 window.addEventListener('unhandledrejection', (e) => {
-  if ((e.reason as Error)?.name === 'Canceled') e.preventDefault()
+  if (harmless(e.reason)) e.preventDefault()
+})
+window.addEventListener('error', (e) => {
+  if (harmless(e.error)) e.preventDefault()
 })
 
 createRoot(document.getElementById('root')!).render(<App />)
