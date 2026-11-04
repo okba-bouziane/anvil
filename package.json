@@ -1,7 +1,7 @@
 {
   "name": "anvil",
   "productName": "Anvil",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A code editor with an optional AI agent that keeps working with no internet",
   "private": true,
   "main": "out/main/index.js",
@@ -11,9 +11,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "npm run build && playwright test",
-    "dist": "npm run build && electron-builder --mac dir && codesign --force --deep --sign - dist/mac-*/Anvil.app",
+    "dist": "npm run build && electron-builder --mac dir -c.npmRebuild=false && codesign --force --deep --sign - dist/mac-*/Anvil.app",
     "postinstall": "node scripts/postinstall.cjs",
-    "dist:win": "npm run build && electron-builder --win --publish never",
+    "dist:win": "npm run build && electron-builder --win --publish never -c.npmRebuild=false",
     "dist:linux": "npm run build && electron-builder --linux --publish never"
   },
   "build": {
@@ -57,7 +57,8 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",
     "diff": "^9.0.0",
-    "node-pty": "^1.1.0"
+    "node-pty": "^1.1.0",
+    "typescript": "^5.9.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
@@ -73,7 +74,6 @@
     "monaco-editor": "^0.52.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "typescript": "^5.9.3",
     "vite": "^5.4.21",
     "vitest": "^2.1.9"
   },

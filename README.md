@@ -1,5 +1,6 @@
 <p align="center"><img src="docs/icon.png" width="110" alt="Anvil icon"></p>
 <h1 align="center">Anvil</h1>
+<p align="center"><a href="https://anvil-editor.vercel.app"><b>anvil-editor.vercel.app</b></a></p>
 <p align="center">A code editor with an optional AI agent that keeps working with no internet.<br>Use it with no AI at all, with a model on your own computer, or with Anthropic, OpenAI or any OpenAI-style server.</p>
 
 ![Anvil reviewing a change made by a local model](docs/review.png)
@@ -55,9 +56,9 @@ When you do use AI, Anvil is built around a small model running on your own lapt
 - Commands ask first, with a separate **Auto-run commands** switch
 - Multiple chats per project, which survive a restart or a crash
 
-| Live writing | Terminal with internet blocked |
+| Live writing | Commit tree and live errors |
 |---|---|
-| ![Code appearing as the model writes it](docs/live.png) | ![The built-in terminal](docs/terminal.png) |
+| ![Code appearing as the model writes it](docs/live.png) | ![The commit tree below the editor, with an error underlined](docs/history.png) |
 
 ## Get started
 

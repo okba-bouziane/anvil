@@ -404,6 +404,10 @@ test('everything except the agent works with no model and no API keys', async ()
   await typeAtEnd(page, 'export const s: string = n\n')
   await expect(page.locator('.statusbar .has-errors')).toContainText('1 error', { timeout: 30000 })
   await expect.poll(() => fs.readFileSync(path.join(root, 'a.ts'), 'utf8'), { timeout: 5000 }).toContain('export const s')
+  // Built-in types work, even though this project has no TypeScript of its own.
+  await typeAtEnd(page, 'export const sum = [1].reduce((a, b) => a + b, 0)\n')
+  await page.waitForTimeout(1500)
+  await expect(page.locator('.statusbar .has-errors')).toContainText('1 error')
   await page.waitForTimeout(1500) // a model suggestion would have failed by now, and must not show an error
   await expect(page.locator('.banner')).toHaveCount(0)
 
