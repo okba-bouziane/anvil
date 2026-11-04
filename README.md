@@ -1,12 +1,14 @@
 <p align="center"><img src="docs/icon.png" width="110" alt="Anvil icon"></p>
 <h1 align="center">Anvil</h1>
-<p align="center">A desktop coding assistant that keeps working with no internet.<br>Run a model on your own Mac, or plug in Anthropic, OpenAI or any OpenAI-style server.</p>
+<p align="center">A code editor with an optional AI agent that keeps working with no internet.<br>Use it with no AI at all, with a model on your own computer, or with Anthropic, OpenAI or any OpenAI-style server.</p>
 
 ![Anvil reviewing a change made by a local model](docs/review.png)
 
 ## Why Anvil
 
-Most AI coding tools need the cloud. Anvil is built around a small model running on your own laptop, and around what that model is bad at:
+**It's a code editor first.** Install it and start coding with no model, no account and no API key. Add AI only if you want it, and hide the agent with one shortcut when you don't.
+
+When you do use AI, Anvil is built around a small model running on your own laptop, and around what that model is bad at:
 
 - **It makes mistakes, so every edit is reviewable.** Keep or undo each block, file or whole step.
 - **It forgets imports, so TypeScript fixes them.** After each edit, Anvil runs your project's own TypeScript, adds missing imports and sends other errors back to the model.
@@ -15,31 +17,41 @@ Most AI coding tools need the cloud. Anvil is built around a small model running
 
 ## Features
 
-**Review**
+**Editor (no AI needed)**
+- Monaco editor with tabs, and edits that survive switching tabs
+- Auto-save, format on save, word wrap, minimap, font and tab size
+- Light, dark and system themes
+- Built-in terminal with tabs (`Cmd/Ctrl+J`)
+- Create, rename and delete files (deleted files go to the Trash)
+- Open a file (`Cmd/Ctrl+P`), then search and replace across the project (`Cmd/Ctrl+Shift+F`). Replacements can be reviewed and undone
+- Run npm scripts with one click
+- Git panel: start a repository, stage, commit, discard, compare, pull and push
+
+**TypeScript and JavaScript (no AI needed)**
+- Errors underlined as you type, and a Problems panel for the whole project
+- Completion across files, with automatic imports
+- Hover info, signature help and go to definition
+- Find references, rename across files, go to symbol and formatting
+
+**Import from VS Code**
+- One button copies your settings, snippets and color themes
+- Extensions that are programs can't run in Anvil, and the import lists them. See [Limits](#limits)
+
+**Models (optional)**
+- **Local on a Mac with Apple Silicon:** switch between MLX models, with a warning for models too big for your memory
+- **Local on any system:** Ollama or LM Studio
+- **Cloud:** Anthropic and OpenAI, with keys encrypted in your system's secure storage
+- The app always shows whether your code stays on your computer
+- Suggestions from a local model as grey text while you type, and Tab accepts them
+
+**Agent (optional)**
 - Inline diffs with **Keep** and **Undo** for each block, each file, or everything
 - **Undo this step** restores every file from a step, even changes you already kept
-- Pending changes and chats survive a restart or a crash
-- An optional **Auto-accept edits** switch
-
-**Models**
-- **Local:** switch between MLX models on your Mac, with a warning for models too big for your memory
-- **Cloud:** Anthropic and OpenAI, with keys encrypted in the macOS Keychain
-- **Custom:** Ollama, LM Studio or any OpenAI-style server
-- The app always shows whether your code stays on your Mac
-
-**Agent**
 - Agent, Plan (read-only) and Ask (no tools) modes
 - See code as it's written, with live tokens per second
 - `@file` attaches a file, and `ANVIL.md` or `AGENTS.md` holds your project's rules
 - Commands ask first, with a separate **Auto-run commands** switch
-- Multiple chats for each project
-
-**Editor**
-- Monaco editor with tabs and ⌘S to save
-- Built-in terminal with tabs (⌘J)
-- Create, rename and delete files (deleted files go to the Trash)
-- Open a file (⌘P) and search the whole project (⇧⌘F)
-- Git panel: stage, commit, discard, compare, pull and push
+- Multiple chats per project, which survive a restart or a crash
 
 | Live writing | Terminal with internet blocked |
 |---|---|
@@ -47,17 +59,21 @@ Most AI coding tools need the cloud. Anvil is built around a small model running
 
 ## Get started
 
-You need a Mac with Apple Silicon. 16 GB of memory is enough for the default local model.
+Download the app from [Releases](https://github.com/okba-bouziane/anvil/releases), open a project and start coding. That's all you need for the editor.
 
-### Download
+| System | File |
+|---|---|
+| Mac with Apple Silicon | `.zip`: unzip it and move Anvil to Applications |
+| Windows | `.exe` installer |
+| Linux | `.AppImage` or `.deb` |
 
-Get `Anvil-mac-arm64.zip` from [Releases](https://github.com/okba-bouziane/anvil/releases), unzip it and move Anvil to Applications.
-
-The app isn't notarized by Apple yet, so macOS blocks it the first time. To allow it, run this once:
+The Mac app isn't notarized by Apple yet, so macOS blocks it the first time. To allow it, run this once:
 
 ```bash
 xattr -cr /Applications/Anvil.app
 ```
+
+The Windows installer isn't signed yet either, so SmartScreen may warn you the first time.
 
 ### Or build it yourself
 
@@ -69,15 +85,15 @@ git clone https://github.com/okba-bouziane/anvil.git
 cd anvil && npm install && npm run dist
 ```
 
-The app is in `dist/mac-arm64`.
+Use `npm run dist:win` on Windows and `npm run dist:linux` on Linux. The app is in `dist`.
 
-### Set up a model
+### Add a model (optional)
 
-Open a project, then open **Settings** (⌘,).
+Open **Settings** (`Cmd/Ctrl+,`).
 
-- **Local:** the setup card installs [MLX](https://github.com/ml-explore/mlx-lm) and downloads a model with one click each. You need internet for this step only.
+- **Local on a Mac:** the setup card installs [MLX](https://github.com/ml-explore/mlx-lm) and downloads a model with one click each. You need internet for this step only.
+- **Local on Windows or Linux:** install [Ollama](https://ollama.com) or [LM Studio](https://lmstudio.ai), download a model there, then pick it under **Custom server**.
 - **Cloud:** paste an API key under Anthropic or OpenAI.
-- **Custom:** pick Ollama or LM Studio, or type a server address.
 
 ## What to expect from a local model
 
@@ -98,9 +114,10 @@ Avoid models bigger than about 9 GB on 16 GB of memory. In testing, a 13 GB mode
 
 ## Privacy and security
 
-- With a local model, nothing leaves your Mac. We tested the packaged app with all internet blocked: the model ran, edited files and passed its check.
+- With no model or a local model, your code stays on your computer. We tested the packaged Mac app with all internet blocked: the model ran, edited files and passed its check.
+- Anvil's only other network use is asking GitHub for the latest version number. You can turn that off in Settings.
 - With a cloud provider, the code the model reads is sent to that provider. The app says so under the chat box.
-- API keys are encrypted with the Keychain and never reach the app's window.
+- API keys are encrypted with your system's secure storage and never reach the app's window.
 - The model's file tools can't leave the project folder.
 - **Commands you approve run with your full user permissions, and can't be undone from Anvil.** Leave **Auto-run commands** off unless you trust the project.
 
@@ -122,14 +139,15 @@ The model writes its actions as plain tags, such as `<edit_file path="a.ts">`, i
 
 ## Limits
 
-Anvil covers everyday coding, but it doesn't replace all of VS Code yet:
+Anvil is young, and VS Code is far more complete. Today:
 
-- No extensions or debugger
-- TypeScript errors come from the automatic check, not as red underlines while you type
-- No go-to-definition across files
-- Automatic checks cover TypeScript only
-- Mac with Apple Silicon only, and dark theme only
-- The Anthropic and OpenAI connections have only been tested against stand-in servers so far, so please report any problems
+- **VS Code extensions don't run.** That needs VS Code's own engine underneath. Only settings, snippets and color themes can be imported, and imported color themes are approximate.
+- **No debugger** yet.
+- **Code help covers TypeScript and JavaScript only.** Other languages get syntax colors, and some completion for HTML, CSS and JSON.
+- **The agent's automatic checks cover TypeScript only.**
+- **Windows and Linux have only been tested on automated test machines**, not by people on real desktops.
+- **The Anthropic and OpenAI connections have only been tested against stand-in servers** so far, so please report any problems.
+- MLX needs a Mac with Apple Silicon.
 
 ## Contributing
 

@@ -363,3 +363,4 @@ button.large { padding:7px 18px; font-size:13.5px; border-radius:10px; }
 .file-editor { flex:1; min-height:0; min-width:0; }
 .banner.update { background:var(--accent-bg); color:var(--text); border-bottom:1px solid var(--line); cursor:default; }
 .banner.update span { cursor:pointer; }
+.row.no-model { justify-content:center; margin-top:10px; }

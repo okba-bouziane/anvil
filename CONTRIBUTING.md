@@ -4,7 +4,7 @@ Bug reports and pull requests are welcome.
 
 ## Set up
 
-You need macOS, Node 20 or newer, and Git.
+You need Node 20 or newer and Git, on macOS, Windows or Linux.
 
 ```bash
 npm install
@@ -35,6 +35,9 @@ REAL_MODEL=1 npx vitest run tests/real-model.test.ts
 | `src/main/tools.ts` | File tools, and the check that keeps them inside the project |
 | `src/main/tscheck.ts` | TypeScript checks and automatic imports |
 | `src/main/providers.ts`, `model.ts` | Anthropic, OpenAI-style servers and the local model server |
+| `src/main/intel.ts`, `intel-worker.ts` | Code intelligence for TypeScript and JavaScript |
+| `src/main/platform.ts` | Everything that differs between macOS, Windows and Linux |
+| `src/main/vscode-import.ts` | Import of settings, snippets and themes from VS Code |
 | `src/renderer/src` | The interface (React and Monaco) |
 
 ## Please keep these true

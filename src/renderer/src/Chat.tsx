@@ -198,8 +198,17 @@ export function Chat(p: ChatProps) {
       }}>
         {!items.length && (
           <div className="chat-empty">
-            <h3>{hasProject ? 'What should change?' : 'Open a project to start'}</h3>
-            {hasProject && (
+            <h3>{!hasProject ? 'Open a project to start' : ready ? 'What should change?' : 'The agent is optional'}</h3>
+            {hasProject && !ready && (
+              <>
+                <p>The editor, terminal, search and Git all work without a model. To use the agent, set up a local model or add an API key.</p>
+                <div className="row no-model">
+                  <button className="primary" onClick={p.onOpenModels}>Set up a model</button>
+                  <button onClick={() => p.onSetting({ showAgent: false })}>Hide the agent</button>
+                </div>
+              </>
+            )}
+            {hasProject && ready && (
               <>
                 <p>Edits appear for review as they happen. Type @ to attach a file.</p>
                 <div className="suggestions">
@@ -260,7 +269,7 @@ export function Chat(p: ChatProps) {
           <textarea
             ref={input}
             value={text}
-            placeholder={ready ? 'Ask for a change. @ attaches a file.' : 'Start the model, or pick one, to send a message'}
+            placeholder={ready ? 'Ask for a change. @ attaches a file.' : 'Set up a model to use the agent'}
             disabled={!hasProject}
             rows={3}
             onChange={(e) => { setText(e.target.value); setCursor(e.target.selectionStart); setMentionAt(0) }}

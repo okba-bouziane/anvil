@@ -1,8 +1,8 @@
 {
   "name": "anvil",
   "productName": "Anvil",
-  "version": "0.1.0",
-  "description": "Desktop coding assistant for local models",
+  "version": "0.2.0",
+  "description": "A code editor with an optional AI agent that keeps working with no internet",
   "private": true,
   "main": "out/main/index.js",
   "scripts": {

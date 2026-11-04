@@ -5,7 +5,7 @@ Please report security problems through a private
 
 ## What Anvil protects
 
-- **API keys** are encrypted with the macOS Keychain and stay in the main process. The window never receives them.
+- **API keys** are encrypted with your system's secure storage and stay in the main process. The window never receives them.
 - **File tools** the model uses can't leave the project folder, including through symbolic links, and can't change `.git`.
 - **Commands** the model wants to run wait for your approval by default.
 - **The window** runs sandboxed, with no Node access and a strict content policy. Text from the model is shown as text, never as HTML.

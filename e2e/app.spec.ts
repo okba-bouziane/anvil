@@ -378,6 +378,48 @@ test('imports from VS Code without running extensions', async () => {
   await close()
 })
 
+test('everything except the agent works with no model and no API keys', async () => {
+  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-data-'))
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-proj-')))
+  fs.writeFileSync(path.join(root, 'package.json'), '{"type":"module"}\n')
+  fs.writeFileSync(path.join(root, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', noEmit: true, skipLibCheck: true, types: [] }, include: ['*.ts'] }))
+  fs.writeFileSync(path.join(root, 'a.ts'), 'export const n: number = 1\n')
+  // Nothing is listening on this port, so no model can answer.
+  fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ provider: 'local', baseUrls: { local: 'http://127.0.0.1:9/v1' }, lastProject: root }))
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
+  const page = await app.firstWindow()
+  const errors: string[] = []
+  page.on('pageerror', (e) => { if (e.message !== 'no diff result available') errors.push(e.message) })
+  await page.waitForSelector('.tree-row')
+  await expect(page.locator('.chat-empty')).toContainText('The agent is optional')
+  await expect(page.locator('.send')).toBeDisabled()
+
+  // Hide the agent, and it stays hidden after this.
+  await page.getByRole('button', { name: 'Hide the agent' }).click()
+  await expect(page.locator('.chat')).toHaveCount(0)
+
+  // Edit with errors and completion.
+  await openFile(page, 'a.ts')
+  await typeAtEnd(page, 'export const s: string = n\n')
+  await expect(page.locator('.statusbar .has-errors')).toContainText('1 error', { timeout: 30000 })
+  await expect.poll(() => fs.readFileSync(path.join(root, 'a.ts'), 'utf8'), { timeout: 5000 }).toContain('export const s')
+  await page.waitForTimeout(1500) // a model suggestion would have failed by now, and must not show an error
+  await expect(page.locator('.banner')).toHaveCount(0)
+
+  // Terminal, search and Git.
+  await page.keyboard.press('ControlOrMeta+j')
+  await expect(page.locator('.xterm')).toBeVisible()
+  await page.keyboard.press('ControlOrMeta+Shift+f')
+  await page.locator('#project-search').fill('export const n')
+  await page.locator('#project-search').press('Enter')
+  await expect(page.locator('.search-count')).toContainText('1 result')
+  await page.getByRole('tab', { name: 'Git' }).click()
+  await expect(page.getByRole('button', { name: 'Start a repository' })).toBeVisible()
+  await expect(page.locator('.banner')).toHaveCount(0)
+  await app.close()
+  expect(errors).toEqual([])
+})
+
 test('chat and pending changes survive a restart', async () => {
   const first = await launch(['<write_file path="a.txt">hello</write_file>', 'Done.'])
   await ask(first.page, 'write it')
