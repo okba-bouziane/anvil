@@ -7,12 +7,15 @@ import { DEFAULT_SETTINGS, type AgentEvent, type AgentMode, type ApprovalAnswer,
 import { Agent } from './agent'
 import { ChangeTracker } from './changes'
 import * as git from './git'
+import { importFromVscode, vscodePaths } from './vscode-import'
 import { downloadCommand, INSTALL_COMMAND, isServerInstalled, modelStatus, startModel, stopModel, stopOwnServer } from './model'
 import { clientFor, effectiveSettings, listModels, localModels } from './providers'
 import { Secrets } from './secrets'
 import { loadSession, saveSession, type Chat } from './session'
 import { canRunMlx } from './platform'
-import { assertWritable, safePath, searchProject, walkFiles } from './tools'
+import { assertWritable, findScripts, replaceInFiles, safePath, searchProject, walkFiles } from './tools'
+import { Worker } from 'node:worker_threads'
+import { isCloud } from '../shared/types'
 import { Terminals } from './terminal'
 import { checkFiles } from './tscheck'
 
@@ -39,6 +42,85 @@ let busy = false
 let saveTimer: NodeJS.Timeout | null = null
 const approvals = new Map<string, (answer: ApprovalAnswer) => void>()
 
+/* Code intelligence runs in a worker thread, which starts with the first file and stops when idle to free memory. */
+let intelWorker: { worker: Worker; root: string } | null = null
+let intelTimer: NodeJS.Timeout | null = null
+let intelId = 0
+const intelPending = new Map<number, { resolve(v: unknown): void; reject(e: Error): void }>()
+const INTEL_IDLE_MS = 10 * 60 * 1000
+
+function stopIntel(): void {
+  intelWorker?.worker.terminate()
+  intelWorker = null
+  for (const pending of intelPending.values()) pending.reject(new Error('stopped'))
+  intelPending.clear()
+}
+
+function intelCall(method: string, args: unknown[]): Promise<unknown> {
+  const root = project?.root
+  if (!root) return Promise.reject(new Error('Open a project first'))
+  if (!intelWorker || intelWorker.root !== root) {
+    stopIntel()
+    const worker = new Worker(path.join(__dirname, 'intel-worker.js'), { workerData: { root } })
+    worker.on('message', ({ id, result, error }) => {
+      const pending = intelPending.get(id)
+      intelPending.delete(id)
+      if (error) pending?.reject(new Error(error))
+      else pending?.resolve(result)
+    })
+    worker.on('error', () => stopIntel())
+    intelWorker = { worker, root }
+  }
+  if (intelTimer) clearTimeout(intelTimer)
+  intelTimer = setTimeout(stopIntel, INTEL_IDLE_MS)
+  return new Promise((resolve, reject) => {
+    const id = ++intelId
+    intelPending.set(id, { resolve, reject })
+    intelWorker!.worker.postMessage({ id, method, args })
+  })
+}
+
+let suggestAbort: AbortController | null = null
+
+async function suggest(file: string, prefix: string, suffix: string): Promise<string> {
+  suggestAbort?.abort()
+  // Only local models: suggesting as you type would send code to a cloud provider, and bill for it, on every pause.
+  if (!settings.inlineSuggest || busy || isCloud(settings)) return ''
+  const abort = new AbortController()
+  suggestAbort = abort
+  let text = ''
+  const client = clientFor(() => settings, (provider) => secrets.get(provider))
+  await client.stream({
+    messages: [
+      { role: 'system', content: 'You complete code. Reply with only the code that belongs at <CURSOR>, with no explanation and no code fences. Keep it short: finish the current line or block, at most about 6 lines. If nothing fits, reply with nothing.' },
+      { role: 'user', content: `File: ${file}\n\n${prefix}<CURSOR>${suffix}` }
+    ],
+    temperature: 0.1,
+    maxTokens: 96,
+    signal: abort.signal
+  }, { onText: (delta) => { text += delta; return abort.signal.aborted }, onProgress: () => {} })
+  return abort.signal.aborted ? '' : text.replace(/^```[^\n]*\n/, '').replace(/\n?```\s*$/, '')
+}
+
+const newer = (a: string, b: string) => {
+  const parse = (v: string) => v.replace(/^v/, '').split('.').map(Number)
+  const [x, y] = [parse(a), parse(b)]
+  for (let i = 0; i < 3; i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) > (y[i] ?? 0)
+  return false
+}
+
+/** Only asks GitHub for the latest version number. Nothing about you or your code is sent, and it stays quiet offline. */
+async function checkForUpdate(): Promise<void> {
+  if (!settings.checkUpdates || process.env.ANVIL_DATA_DIR) return
+  try {
+    const response = await fetch('https://api.github.com/repos/okba-bouziane/anvil/releases/latest', { signal: AbortSignal.timeout(8000), headers: { Accept: 'application/vnd.github+json' } })
+    const release = (await response.json()) as { tag_name?: string; html_url?: string }
+    if (release.tag_name && release.html_url && newer(release.tag_name, app.getVersion())) send({ type: 'update', version: release.tag_name, url: release.html_url })
+  } catch {
+    /* offline, which is fine */
+  }
+}
+
 const dataDir = () => process.env.ANVIL_DATA_DIR ?? app.getPath('userData')
 const settingsFile = () => path.join(dataDir(), 'settings.json')
 const sessionsDir = () => path.join(dataDir(), 'sessions')
@@ -57,6 +139,7 @@ function loadSettings(): void {
     ...platformDefaults,
     ...saved,
     models: { ...DEFAULT_SETTINGS.models, ...saved.models },
+    editor: { ...DEFAULT_SETTINGS.editor, ...saved.editor },
     baseUrls: { ...DEFAULT_SETTINGS.baseUrls, ...(canRunMlx() ? {} : { custom: 'http://127.0.0.1:11434/v1' }), ...saved.baseUrls }
   }
 }
@@ -172,6 +255,7 @@ function openRoot(root: string): ProjectState {
   if (project) {
     save(true)
     terminals.killAll()
+    stopIntel()
   }
   const saved = loadSession(sessionsDir(), real)
   const tracker = new ChangeTracker(real, saved?.changes)
@@ -212,6 +296,7 @@ const notBusy = () => {
   if (busy) throw new Error('Wait for the current step to finish, or press Stop')
 }
 
+const importFile = () => path.join(dataDir(), 'vscode-import.json')
 const modelLog = () => path.join(dataDir(), 'model-server.log')
 const status = (): Promise<ModelStatus> => modelStatus(settings, settings.provider === 'local' || secrets.has(settings.provider))
 
@@ -305,6 +390,7 @@ function handlers() {
     return text
   })
   const treeChanged = () => {
+    void intelCall('filesChanged', []).catch(() => {})
     send({ type: 'tree' })
     sendChanges()
   }
@@ -371,6 +457,50 @@ function handlers() {
     const safe = safePath(p.root, rel)
     const file = path.join(p.root, safe)
     return { original: await git.headVersion(p.root, safe), modified: fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '' }
+  })
+  handle('intel', (method: string, ...args: unknown[]) => intelCall(method, args))
+  handle('listScripts', () => findScripts(need().root))
+  handle('replaceInProject', (query: string, options: { caseSensitive: boolean; regex: boolean }, replacement: string) => {
+    const p = need()
+    notBusy()
+    let results
+    try {
+      results = replaceInFiles(p.root, query, options, replacement)
+    } catch (err) {
+      if (err instanceof SyntaxError) throw new Error('That search pattern is not valid')
+      throw err
+    }
+    // Replacing goes through review like any other change, so it can be undone.
+    p.tracker.beginCheckpoint(randomUUID().slice(0, 8), `Replace ${query} with ${replacement}`)
+    for (const r of results) {
+      assertWritable(r.path)
+      p.tracker.write(r.path, r.content)
+    }
+    const done = p.tracker.endCheckpoint()
+    if (done) p.active.items.push({ kind: 'checkpoint', id: randomUUID().slice(0, 8), checkpointId: done.id })
+    if (done) send({ type: 'item', item: p.active.items[p.active.items.length - 1] })
+    sendChanges()
+    return { files: results.length, matches: results.reduce((n, r) => n + r.matches, 0) }
+  })
+  handle('suggest', (file: string, prefix: string, suffix: string) => suggest(file, prefix, suffix).catch(() => ''))
+  handle('cancelSuggest', () => suggestAbort?.abort())
+  handle('openRelease', (url: string) => {
+    if (url.startsWith('https://github.com/okba-bouziane/anvil/')) void shell.openExternal(url)
+  })
+  handle('importVscode', () => {
+    const { assets, summary, settingsPatch } = importFromVscode(vscodePaths())
+    fs.mkdirSync(dataDir(), { recursive: true })
+    fs.writeFileSync(importFile(), JSON.stringify(assets))
+    settings = { ...settings, ...settingsPatch, editor: { ...settings.editor, ...settingsPatch.editor } }
+    writeSettings()
+    return summary
+  })
+  handle('importedAssets', () => {
+    try {
+      return JSON.parse(fs.readFileSync(importFile(), 'utf8'))
+    } catch {
+      return { snippets: [], themes: [] }
+    }
   })
   handle('terminalCreate', () => terminals.create(project?.root ?? ''))
   handle('terminalWrite', (id: string, data: string) => terminals.write(id, data))
@@ -477,6 +607,11 @@ function createWindow(): void {
     return { action: 'deny' }
   })
   win.webContents.on('will-navigate', (event) => event.preventDefault())
+  // The window asks first when it has unsaved edits.
+  win.webContents.on('will-prevent-unload', (event) => {
+    const choice = dialog.showMessageBoxSync(win!, { type: 'warning', buttons: ['Close without saving', 'Keep editing'], defaultId: 1, cancelId: 1, message: 'You have unsaved changes.' })
+    if (choice === 0) event.preventDefault()
+  })
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL)
   else void win.loadFile(path.join(__dirname, '../renderer/index.html'))
   win.on('closed', () => { win = null })
@@ -487,12 +622,14 @@ app.whenReady().then(() => {
   secrets = new Secrets(path.join(dataDir(), 'secrets.json'), !!process.env.ANVIL_MEMORY_SECRETS)
   handlers()
   createWindow()
+  setTimeout(() => void checkForUpdate(), 5000)
   app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow() })
 })
 
 app.on('before-quit', () => {
   project?.agent.cancel()
   terminals.killAll()
+  stopIntel()
   stopOwnServer()
   save(true)
 })

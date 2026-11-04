@@ -1,3 +1,12 @@
+export interface EditorSettings {
+  fontSize: number
+  tabSize: number
+  wordWrap: boolean
+  minimap: boolean
+  autoSave: boolean
+  formatOnSave: boolean
+}
+
 export type ProviderId = 'local' | 'anthropic' | 'openai' | 'custom'
 export type AgentMode = 'agent' | 'plan' | 'ask'
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
@@ -12,6 +21,12 @@ export interface Settings {
   contextTokens: number
   maxOutputTokens: number
   temperature: number
+  theme: 'system' | 'dark' | 'light'
+  editor: EditorSettings
+  showAgent: boolean
+  inlineSuggest: boolean
+  checkUpdates: boolean
+  editorTheme?: string
   lastProject?: string
   recentProjects: string[]
 }
@@ -26,6 +41,11 @@ export const DEFAULT_SETTINGS: Settings = {
   contextTokens: 24000,
   maxOutputTokens: 4096,
   temperature: 0.2,
+  theme: 'system',
+  editor: { fontSize: 12.5, tabSize: 2, wordWrap: false, minimap: false, autoSave: true, formatOnSave: false },
+  showAgent: true,
+  inlineSuggest: true,
+  checkUpdates: true,
   recentProjects: []
 }
 
@@ -39,6 +59,76 @@ export interface ModelOption {
   /** Size on disk, for local models. */
   sizeGb?: number
   warning?: string
+}
+
+export interface IntelLocation {
+  path: string
+  line: number
+  column: number
+  endLine: number
+  endColumn: number
+}
+
+export interface IntelDiagnostic extends IntelLocation {
+  message: string
+  code: number
+  severity: 'error' | 'warning'
+}
+
+export interface IntelEdit extends IntelLocation {
+  text: string
+}
+
+export interface IntelCompletion {
+  name: string
+  kind: string
+  sortText: string
+  source?: string
+  data?: unknown
+  insertText?: string
+}
+
+export interface IntelSymbol extends Omit<IntelLocation, 'path'> {
+  name: string
+  kind: string
+  container: string
+}
+
+export interface ImportedSnippet {
+  language: string
+  name: string
+  prefix: string
+  body: string
+  description: string
+}
+
+export interface ImportedTheme {
+  id: string
+  name: string
+  dark: boolean
+  colors: Record<string, string>
+  tokens: { token: string; foreground?: string; fontStyle?: string }[]
+}
+
+export interface ImportedAssets {
+  snippets: ImportedSnippet[]
+  themes: ImportedTheme[]
+}
+
+export interface VscodeImport {
+  found: boolean
+  settings: string[]
+  snippets: number
+  themes: string[]
+  extensionsUsed: string[]
+  /** Extensions that are programs. Anvil can't run them. */
+  extensionsSkipped: string[]
+}
+
+export interface ScriptEntry {
+  dir: string
+  name: string
+  command: string
 }
 
 export interface ChatSummary {
@@ -107,6 +197,7 @@ export type AgentEvent =
   | { type: 'context'; tokens: number; limit: number }
   | { type: 'chats'; chats: ChatSummary[]; activeChat: string }
   | { type: 'tree' }
+  | { type: 'update'; version: string; url: string }
 
 export interface SearchHit {
   path: string
@@ -157,6 +248,14 @@ export interface AnvilApi {
   platform: string
   getSettings(): Promise<Settings>
   localSetup(): Promise<LocalSetup>
+  intel<T = unknown>(method: string, ...args: unknown[]): Promise<T>
+  listScripts(): Promise<ScriptEntry[]>
+  replaceInProject(query: string, options: { caseSensitive: boolean; regex: boolean }, replacement: string): Promise<{ files: number; matches: number }>
+  suggest(path: string, prefix: string, suffix: string): Promise<string>
+  cancelSuggest(): Promise<void>
+  openRelease(url: string): Promise<void>
+  importVscode(): Promise<VscodeImport>
+  importedAssets(): Promise<ImportedAssets>
   createPath(path: string, isDir: boolean): Promise<void>
   renamePath(from: string, to: string): Promise<void>
   deletePath(path: string): Promise<void>

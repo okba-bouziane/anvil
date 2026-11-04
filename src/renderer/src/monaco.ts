@@ -1,13 +1,12 @@
 import * as monaco from 'monaco-editor'
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker&inline'
-import TsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker&inline'
 import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker&inline'
 import CssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker&inline'
 import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker&inline'
+import type { ImportedTheme } from '../../shared/types'
 
 self.MonacoEnvironment = {
   getWorker(_id, label) {
-    if (label === 'typescript' || label === 'javascript') return new TsWorker()
     if (label === 'json') return new JsonWorker()
     if (label === 'css' || label === 'scss' || label === 'less') return new CssWorker()
     if (label === 'html' || label === 'handlebars' || label === 'razor') return new HtmlWorker()
@@ -15,10 +14,11 @@ self.MonacoEnvironment = {
   }
 }
 
-// The real project check runs in the app. The editor has no project config, so its own errors would be wrong.
-const off = { noSemanticValidation: true, noSyntaxValidation: true }
-monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions(off)
-monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions(off)
+// TypeScript and JavaScript help comes from the project-aware engine in the app, so the editor's own
+// single-file version is switched off. It would show duplicates and false errors.
+const off = { completionItems: false, hovers: false, documentSymbols: false, definitions: false, references: false, documentHighlights: false, rename: false, diagnostics: false, documentRangeFormattingEdits: false, signatureHelp: false, onTypeFormattingEdits: false, codeActions: false, inlayHints: false }
+monaco.languages.typescript.typescriptDefaults.setModeConfiguration(off)
+monaco.languages.typescript.javascriptDefaults.setModeConfiguration(off)
 
 monaco.editor.defineTheme('anvil', {
   base: 'vs-dark',
@@ -40,12 +40,35 @@ monaco.editor.defineTheme('anvil', {
   }
 })
 
+monaco.editor.defineTheme('anvil-light', {
+  base: 'vs',
+  inherit: true,
+  rules: [],
+  colors: {
+    'editor.background': '#ffffff',
+    'editorLineNumber.foreground': '#b4b6c0',
+    'editorLineNumber.activeForeground': '#5f616d',
+    'editor.lineHighlightBackground': '#f4f4f8',
+    'editor.lineHighlightBorder': '#00000000',
+    'diffEditor.insertedTextBackground': '#16a34a26',
+    'diffEditor.removedTextBackground': '#dc262626',
+    'diffEditor.insertedLineBackground': '#16a34a14',
+    'diffEditor.removedLineBackground': '#dc262614'
+  }
+})
+
+export function defineImportedTheme(theme: ImportedTheme): void {
+  monaco.editor.defineTheme(theme.id, {
+    base: theme.dark ? 'vs-dark' : 'vs',
+    inherit: true,
+    rules: theme.tokens,
+    colors: Object.fromEntries(Object.entries(theme.colors).filter(([key]) => key.startsWith('editor') || key.startsWith('diffEditor')))
+  })
+}
+
 export { monaco }
 export const OPTIONS = {
-  theme: 'anvil',
   automaticLayout: true,
-  minimap: { enabled: false },
-  fontSize: 12.5,
   lineHeight: 20,
   renderLineHighlight: 'line',
   scrollbar: { verticalScrollbarSize: 9, horizontalScrollbarSize: 9, useShadows: false },
@@ -54,5 +77,8 @@ export const OPTIONS = {
   hideCursorInOverviewRuler: true,
   fontFamily: "'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', 'Liberation Mono', monospace",
   scrollBeyondLastLine: false,
-  padding: { top: 10 }
+  padding: { top: 10 },
+  inlineSuggest: { enabled: true },
+  bracketPairColorization: { enabled: true },
+  'semanticHighlighting.enabled': false
 } as const

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { FileChange, TreeEntry } from '../../shared/types'
+import type { FileChange, ScriptEntry, TreeEntry } from '../../shared/types'
 import { Icon } from './Icon'
-import { GitPanel, SearchPanel } from './Panels'
+import { GitPanel, ScriptsPanel, SearchPanel } from './Panels'
 
 const api = window.anvil
 
@@ -131,9 +131,9 @@ function Tree({ selected, revision, changed, onOpen, onRenamed, onError }: { sel
   )
 }
 
-export type SidebarTab = 'files' | 'search' | 'changes' | 'git'
+export type SidebarTab = 'files' | 'search' | 'changes' | 'git' | 'scripts'
 
-export function Sidebar({ changes, selected, revision, tab, setTab, onOpen, onOpenAt, onDiff, onBranch, onRenamed, onError }: {
+export function Sidebar({ changes, selected, revision, tab, setTab, onOpen, onOpenAt, onDiff, onBranch, onRenamed, onRunScript, onBeforeReplace, onError }: {
   changes: FileChange[]
   selected: string | null
   revision: number
@@ -144,6 +144,8 @@ export function Sidebar({ changes, selected, revision, tab, setTab, onOpen, onOp
   onDiff(path: string): void
   onBranch(branch: string | null): void
   onRenamed(from: string, to: string | null): void
+  onRunScript(script: ScriptEntry): void
+  onBeforeReplace(): Promise<void>
   onError(e: unknown): void
 }) {
   const changed = new Set(changes.map((c) => c.path))
@@ -151,7 +153,8 @@ export function Sidebar({ changes, selected, revision, tab, setTab, onOpen, onOp
     { id: 'files', label: 'Files', icon: 'folder' },
     { id: 'search', label: 'Search', icon: 'search' },
     { id: 'changes', label: 'Changes', icon: 'edit' },
-    { id: 'git', label: 'Git', icon: 'branch' }
+    { id: 'git', label: 'Git', icon: 'branch' },
+    { id: 'scripts', label: 'Scripts', icon: 'play' }
   ]
   return (
     <div className="sidebar">
@@ -164,7 +167,8 @@ export function Sidebar({ changes, selected, revision, tab, setTab, onOpen, onOp
         ))}
       </div>
       {tab === 'files' && <Tree selected={selected} revision={revision} changed={changed} onOpen={onOpen} onRenamed={onRenamed} onError={onError} />}
-      {tab === 'search' && <SearchPanel onOpen={onOpenAt} onError={onError} />}
+      {tab === 'search' && <SearchPanel onOpen={onOpenAt} onBeforeReplace={onBeforeReplace} onError={onError} />}
+      {tab === 'scripts' && <ScriptsPanel revision={revision} onRun={onRunScript} onError={onError} />}
       {tab === 'git' && <GitPanel revision={revision} onDiff={onDiff} onBranch={onBranch} onError={onError} />}
       {tab === 'changes' && (
         <div className="changes">

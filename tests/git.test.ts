@@ -22,6 +22,7 @@ it('stages, commits and discards', async () => {
   run('init', '-b', 'main')
   run('config', 'user.email', 't@example.com')
   run('config', 'user.name', 'T')
+  run('config', 'core.autocrlf', 'false')
   fs.writeFileSync(path.join(root, 'a file.txt'), 'one\n')
   expect((await git.status(root)).files).toEqual([{ path: 'a file.txt', code: '??' }])
   await git.stage(root, ['a file.txt'], true)

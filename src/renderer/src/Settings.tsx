@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Effort, LocalSetup, ModelOption, ProviderId, Settings } from '../../shared/types'
+import type { EditorSettings, Effort, ImportedAssets, LocalSetup, ModelOption, ProviderId, Settings, VscodeImport } from '../../shared/types'
 import { PROVIDER_LABEL } from '../../shared/types'
 import { Icon } from './Icon'
 
@@ -45,9 +45,73 @@ function LocalSetupCard({ setup, hasProject, onRun }: { setup: LocalSetup; hasPr
   )
 }
 
-export function SettingsModal({ settings, initial, onSettings, onStatus, onClose, onError, hasProject, onRunInTerminal }: {
+function EditorPanel({ settings, assets, onSettings, onImported, onError }: { settings: Settings; assets: ImportedAssets; onSettings(patch: Partial<Settings>): void; onImported(): void; onError(e: unknown): void }) {
+  const [result, setResult] = useState<VscodeImport | null>(null)
+  const [busy, setBusy] = useState(false)
+  const e = settings.editor
+  const set = (patch: Partial<EditorSettings>) => onSettings({ editor: { ...e, ...patch } })
+  const toggle = (label: string, hint: string, on: boolean, change: (v: boolean) => void) => (
+    <div className="setting-row">
+      <span>{label}<small>{hint}</small></span>
+      <label className="toggle" aria-label={label}><input type="checkbox" checked={on} onChange={(ev) => change(ev.target.checked)} /><span className="switch" /></label>
+    </div>
+  )
+  const run = () => {
+    setBusy(true)
+    void api.importVscode().then((r) => { setResult(r); onImported() }).catch(onError).finally(() => setBusy(false))
+  }
+  return (
+    <>
+      <div className="settings-group">
+        <div className="setting-row"><span>Theme</span>
+          <select id="theme" value={settings.theme} onChange={(ev) => onSettings({ theme: ev.target.value as Settings['theme'] })}>
+            <option value="system">System</option><option value="dark">Dark</option><option value="light">Light</option>
+          </select>
+        </div>
+        {assets.themes.length > 0 && (
+          <div className="setting-row"><span>Editor colors<small>Imported themes color the code, and are approximate</small></span>
+            <select id="editor-theme" value={settings.editorTheme ?? ''} onChange={(ev) => onSettings({ editorTheme: ev.target.value || undefined })}>
+              <option value="">Anvil</option>
+              {assets.themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </div>
+        )}
+        <div className="setting-row"><span>Font size</span><input id="font-size" type="number" min={9} max={28} value={e.fontSize} onChange={(ev) => set({ fontSize: Number(ev.target.value) || 12.5 })} /></div>
+        <div className="setting-row"><span>Tab size</span><input id="tab-size" type="number" min={1} max={8} value={e.tabSize} onChange={(ev) => set({ tabSize: Number(ev.target.value) || 2 })} /></div>
+        {toggle('Auto-save', 'Saves about a second after you stop typing', e.autoSave, (v) => set({ autoSave: v }))}
+        {toggle('Format on save', 'TypeScript and JavaScript files', e.formatOnSave, (v) => set({ formatOnSave: v }))}
+        {toggle('Word wrap', 'Wraps long lines', e.wordWrap, (v) => set({ wordWrap: v }))}
+        {toggle('Minimap', 'A small overview beside the code', e.minimap, (v) => set({ minimap: v }))}
+        {toggle('Suggestions from the model', 'Grey text as you pause, Tab to accept. Local and custom local servers only', settings.inlineSuggest, (v) => onSettings({ inlineSuggest: v }))}
+        {toggle('Check for updates', 'Asks GitHub for the latest version number', settings.checkUpdates, (v) => onSettings({ checkUpdates: v }))}
+      </div>
+      <div className="field"><span>Import from VS Code</span>
+        <p className="blurb">Copies your settings, snippets and color themes. Extensions that are programs, like ESLint or GitLens, can't run in Anvil, and the list below will name them.</p>
+        <button className="primary use" disabled={busy} onClick={run}>{busy ? 'Importing…' : 'Import from VS Code'}</button>
+      </div>
+      {result && !result.found && <div className="import-result"><b>VS Code wasn't found on this computer.</b></div>}
+      {result?.found && (
+        <div className="import-result">
+          <b>Imported {result.settings.length} setting{result.settings.length === 1 ? '' : 's'}, {result.snippets} snippet{result.snippets === 1 ? '' : 's'} and {result.themes.length} theme{result.themes.length === 1 ? '' : 's'}.</b>
+          {result.extensionsSkipped.length > 0 && (
+            <>
+              <span>These {result.extensionsSkipped.length} extensions are programs, so they weren't imported:</span>
+              <ul>{result.extensionsSkipped.map((n) => <li key={n}>{n}</li>)}</ul>
+            </>
+          )}
+        </div>
+      )}
+    </>
+  )
+}
+
+export type SettingsTab = ProviderId | 'editor'
+
+export function SettingsModal({ settings, initial, assets, onImported, onSettings, onStatus, onClose, onError, hasProject, onRunInTerminal }: {
   settings: Settings
-  initial: ProviderId
+  initial: SettingsTab
+  assets: ImportedAssets
+  onImported(): void
   onSettings(patch: Partial<Settings>): void
   onStatus(): void
   onClose(): void
@@ -57,7 +121,7 @@ export function SettingsModal({ settings, initial, onSettings, onStatus, onClose
 }) {
   const [setup, setSetup] = useState<LocalSetup | null>(null)
   useEffect(() => { void api.localSetup().then(setSetup).catch(onError) }, [onError])
-  const [tab, setTab] = useState<ProviderId>(initial)
+  const [tab, setTab] = useState<SettingsTab>(initial)
   const [models, setModels] = useState<ModelOption[]>([])
   const [listError, setListError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -69,6 +133,7 @@ export function SettingsModal({ settings, initial, onSettings, onStatus, onClose
     setLoading(true)
     setListError(null)
     setModels([])
+    if (tab === 'editor') return setLoading(false)
     void api.listModels(tab).then(setModels)
       .catch((e: Error) => setListError(e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')))
       .finally(() => setLoading(false))
@@ -85,11 +150,12 @@ export function SettingsModal({ settings, initial, onSettings, onStatus, onClose
   }, [tab])
 
   useEffect(() => {
-    if (keys?.[tab]) refresh()
+    if (tab !== 'editor' && keys?.[tab]) refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keys])
 
-  const current = settings.models[tab]
+  const provider = tab === 'editor' ? 'local' : tab
+  const current = settings.models[provider]
   const pick = (m: ModelOption) => {
     if (tab === 'local') {
       if (m.warning && confirm?.id !== m.id) return setConfirm(m)
@@ -97,11 +163,11 @@ export function SettingsModal({ settings, initial, onSettings, onStatus, onClose
       void api.switchLocalModel(m.id).then(() => { onSettings({ provider: 'local', models: { ...settings.models, local: m.id } }); onStatus() }).catch(onError)
       return
     }
-    onSettings({ provider: tab, models: { ...settings.models, [tab]: m.id } })
+    onSettings({ provider, models: { ...settings.models, [provider]: m.id } })
     onStatus()
   }
   const saveKey = () => {
-    void api.setApiKey(tab, key).then(() => { setKey(''); refreshKeys(); onStatus() }).catch(onError)
+    void api.setApiKey(provider, key).then(() => { setKey(''); refreshKeys(); onStatus() }).catch(onError)
   }
 
   return (
@@ -119,9 +185,13 @@ export function SettingsModal({ settings, initial, onSettings, onStatus, onClose
                 {settings.provider === p && <span className="in-use">In use</span>}
               </button>
             ))}
+            <button className={tab === 'editor' ? 'active' : ''} onClick={() => setTab('editor')}><Icon name="gear" size={14} />Editor</button>
           </nav>
           <div className="modal-main">
-            <p className="blurb">{BLURB[tab]}</p>
+            {tab === 'editor' && <EditorPanel settings={settings} assets={assets} onSettings={onSettings} onImported={onImported} onError={onError} />}
+            {tab !== 'editor' && (
+              <>
+                <p className="blurb">{BLURB[provider]}</p>
             {tab === 'local' && setup && <LocalSetupCard setup={setup} hasProject={hasProject} onRun={onRunInTerminal} />}
 
             {tab === 'custom' && (
@@ -135,8 +205,8 @@ export function SettingsModal({ settings, initial, onSettings, onStatus, onClose
 
             {tab !== 'local' && (
               <div className="field"><span>API key{tab === 'custom' ? ' (if the server needs one)' : ''}</span>
-                {keys?.[tab]
-                  ? <div className="row key-row"><span className="key-saved"><Icon name="check" size={13} />Saved in this computer's secure storage</span><button onClick={() => void api.clearApiKey(tab).then(() => { refreshKeys(); setModels([]); onStatus() }).catch(onError)}>Remove</button></div>
+                {keys?.[provider]
+                  ? <div className="row key-row"><span className="key-saved"><Icon name="check" size={13} />Saved in this computer's secure storage</span><button onClick={() => void api.clearApiKey(provider).then(() => { refreshKeys(); setModels([]); onStatus() }).catch(onError)}>Remove</button></div>
                   : <div className="row key-row"><input id="api-key" type="password" autoComplete="off" spellCheck={false} value={key} placeholder="Paste your key" onChange={(e) => setKey(e.target.value)} /><button className="primary" disabled={!key.trim()} onClick={saveKey}>Save</button></div>}
               </div>
             )}
@@ -164,7 +234,7 @@ export function SettingsModal({ settings, initial, onSettings, onStatus, onClose
 
             {tab !== 'local' && (
               <label className="field"><span>Or type a model name</span>
-                <input id="model-name" value={current} spellCheck={false} onChange={(e) => onSettings({ provider: tab, models: { ...settings.models, [tab]: e.target.value } })} />
+                <input id="model-name" value={current} spellCheck={false} onChange={(e) => onSettings({ provider, models: { ...settings.models, [provider]: e.target.value } })} />
               </label>
             )}
 
@@ -184,7 +254,9 @@ export function SettingsModal({ settings, initial, onSettings, onStatus, onClose
               </div>
             )}
 
-            {tab !== settings.provider && <button className="primary use" onClick={() => { onSettings({ provider: tab }); onStatus() }}>Use {PROVIDER_LABEL[tab]}</button>}
+            {tab !== settings.provider && <button className="primary use" onClick={() => { onSettings({ provider }); onStatus() }}>Use {PROVIDER_LABEL[provider]}</button>}
+              </>
+            )}
           </div>
         </div>
       </div>

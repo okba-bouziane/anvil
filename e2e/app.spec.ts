@@ -170,7 +170,7 @@ test('API keys are masked and never reach the window, and models can be switched
   expect(await page.evaluate(() => JSON.stringify(window.localStorage) + document.body.innerText)).not.toContain('sk-secret-value')
   expect(JSON.stringify(await page.evaluate(() => window.anvil.getSettings()))).not.toContain('sk-secret-value')
   await page.getByRole('button', { name: 'Use Anthropic' }).click()
-  await page.getByRole('button', { name: 'Close' }).click()
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
   await expect(page.locator('.where')).toContainText('Sends code to Anthropic')
   await expect(page.locator('.model')).toContainText('claude-opus-5-5')
   await close()
@@ -246,6 +246,134 @@ test('the Git panel starts a repository, stages and commits', async () => {
   await expect(page.locator('.pane-empty.small')).toContainText('No changes')
   expect(execFileSync('git', ['log', '--format=%s'], { cwd: root }).toString().trim()).toBe('first commit')
   await page.screenshot({ path: 'test-results/git.png' })
+  await close()
+})
+
+async function launchCode(): Promise<{ page: Page; root: string; close(): Promise<void> }> {
+  const session = await launch([])
+  const { root } = session
+  fs.writeFileSync(path.join(root, 'package.json'), '{"type":"module"}\n')
+  fs.writeFileSync(path.join(root, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', noEmit: true, skipLibCheck: true, types: [] }, include: ['*.ts'] }))
+  fs.writeFileSync(path.join(root, 'lib.ts'), 'export function addUp(a: number, b: number): number {\n  return a + b\n}\n')
+  fs.writeFileSync(path.join(root, 'main.ts'), "import { addUp } from './lib.js'\n\nexport const total: number = addUp(1, 2)\n")
+  await session.page.keyboard.press('ControlOrMeta+Shift+f')
+  await session.page.getByRole('tab', { name: 'Files' }).click()
+  return session
+}
+
+const openFile = async (page: Page, name: string) => {
+  await page.keyboard.press('ControlOrMeta+p')
+  await page.locator('#quick-open').fill(name)
+  await expect(page.locator('.palette .pop-row').first()).toContainText(name)
+  await page.locator('#quick-open').press('Enter')
+  await expect(page.locator('.tab.active')).toContainText(name)
+}
+
+const typeAtEnd = async (page: Page, text: string) => {
+  await page.locator('.monaco-editor textarea').first().focus()
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+ArrowDown' : 'Control+End')
+  await page.keyboard.type(text)
+}
+
+test('underlines errors, completes across files, and jumps to definitions', async () => {
+  const { page, root, close } = await launchCode()
+  await page.waitForTimeout(300)
+  await page.locator('.tree-row', { hasText: 'notes.txt' }).waitFor()
+  await openFile(page, 'main.ts')
+
+  // An error shows up without saving, and in the status bar.
+  await typeAtEnd(page, 'export const bad: string = addUp(1, 2)\n')
+  await expect(page.locator('.statusbar .has-errors')).toContainText('1 errors', { timeout: 30000 })
+  await expect(page.locator('.squiggly-error').first()).toBeAttached()
+  await page.screenshot({ path: 'test-results/errors.png' })
+
+  // Completion from the project engine.
+  await typeAtEnd(page, 'addU')
+  await page.keyboard.press('Control+Space')
+  await expect(page.locator('.suggest-widget .monaco-list-row').first()).toContainText('addUp', { timeout: 15000 })
+  await page.keyboard.press('Escape')
+
+  // Go to definition opens the other file in a tab.
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+ArrowUp' : 'Control+Home')
+  for (let i = 0; i < 10; i++) await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('F12')
+  await expect(page.locator('.tab.active')).toContainText('lib.ts', { timeout: 15000 })
+  await close()
+  expect(fs.readFileSync(path.join(root, 'lib.ts'), 'utf8')).toContain('addUp')
+})
+
+test('edits survive switching tabs, auto-save writes them, and the setting turns it off', async () => {
+  const { page, root, close } = await launchCode()
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.locator('.modal-nav button', { hasText: 'Editor' }).click()
+  await page.getByLabel('Auto-save').check({ force: true })
+  await page.getByLabel('Auto-save').uncheck({ force: true })
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+
+  await openFile(page, 'notes.txt')
+  await typeAtEnd(page, 'typed but not saved')
+  await expect(page.locator('.tab.active .dirty-dot')).toBeVisible()
+  await openFile(page, 'lib.ts')
+  await page.locator('.tab', { hasText: 'notes.txt' }).click()
+  await expect(page.locator('.view-lines')).toContainText('typed but not saved')
+  expect(fs.readFileSync(path.join(root, 'notes.txt'), 'utf8')).not.toContain('typed but not saved')
+  await page.locator('.monaco-editor textarea').first().focus()
+  await page.keyboard.press('ControlOrMeta+s')
+  await expect(page.locator('.tab.active .dirty-dot')).toHaveCount(0)
+  expect(fs.readFileSync(path.join(root, 'notes.txt'), 'utf8')).toContain('typed but not saved')
+
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.locator('.modal-nav button', { hasText: 'Editor' }).click()
+  await page.getByLabel('Auto-save').check({ force: true })
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await typeAtEnd(page, ' and auto-saved')
+  await expect.poll(() => fs.readFileSync(path.join(root, 'notes.txt'), 'utf8'), { timeout: 5000 }).toContain('and auto-saved')
+  await close()
+})
+
+test('works with the agent hidden, in light theme, with replace and scripts', async () => {
+  const { page, root, close } = await launchCode()
+  fs.writeFileSync(path.join(root, 'package.json'), '{"type":"module","scripts":{"hello":"node -e \\"require(\'fs\').writeFileSync(\'script-ran.txt\',\'\')\\""}}\n')
+  await page.getByRole('button', { name: 'Agent panel' }).click()
+  await expect(page.locator('.chat')).toHaveCount(0)
+  await expect(page.locator('.model')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.locator('.modal-nav button', { hasText: 'Editor' }).click()
+  await page.locator('#theme').selectOption('light')
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await openFile(page, 'lib.ts')
+  await page.screenshot({ path: 'test-results/light.png' })
+
+  // Replace goes through review, so it can be undone.
+  page.on('dialog', (d) => void d.accept())
+  await page.keyboard.press('ControlOrMeta+Shift+f')
+  await page.locator('#project-search').fill('line 5')
+  await page.locator('#project-search').press('Enter')
+  await page.getByRole('button', { name: 'Show replace' }).click()
+  await page.locator('#project-replace').fill('LINE FIVE')
+  await page.getByRole('button', { name: 'Replace all' }).click()
+  await expect(page.locator('.badge')).toHaveText('1')
+  expect(fs.readFileSync(path.join(root, 'notes.txt'), 'utf8')).toContain('LINE FIVE')
+  await page.getByRole('tab', { name: 'Changes' }).click()
+  await page.getByRole('button', { name: 'Undo all' }).click()
+  expect(fs.readFileSync(path.join(root, 'notes.txt'), 'utf8')).not.toContain('LINE FIVE')
+
+  // A script runs in the terminal with one click.
+  await page.getByRole('tab', { name: 'Scripts' }).click()
+  await page.locator('.script-row', { hasText: 'hello' }).click()
+  await expect.poll(() => fs.existsSync(path.join(root, 'script-ran.txt')), { timeout: 20000 }).toBe(true)
+  await close()
+})
+
+test('imports from VS Code without running extensions', async () => {
+  const { page, close } = await launch([])
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.locator('.modal-nav button', { hasText: 'Editor' }).click()
+  await page.getByRole('button', { name: 'Import from VS Code' }).click()
+  await expect(page.locator('.import-result')).toBeVisible({ timeout: 20000 })
+  await page.screenshot({ path: 'test-results/import.png' })
   await close()
 })
 

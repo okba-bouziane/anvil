@@ -134,6 +134,7 @@ export interface ChatProps {
   onDeleteChat(id: string): void
   onSetting(patch: Partial<Settings>): void
   onOpenModels(): void
+  onBeforeSend(): Promise<void>
 }
 
 export function Chat(p: ChatProps) {
@@ -171,7 +172,8 @@ export function Chat(p: ChatProps) {
     if (!value || busy || !hasProject || !ready) return
     setText('')
     stick.current = true
-    void api.send(value, p.activeFile, mode).catch(onError)
+    // The model should see what's on screen, including edits not saved yet.
+    void p.onBeforeSend().then(() => api.send(value, p.activeFile, mode)).catch(onError)
   }
 
   const percent = Math.min(100, Math.round((p.context.tokens / Math.max(p.context.limit, 1)) * 100))

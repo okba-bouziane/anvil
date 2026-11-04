@@ -22,6 +22,9 @@ const PATHS: Record<string, string> = {
   copy: 'M7.5 7.5h9v9h-9zM12.5 7.5v-4h-9v9h4',
   newfile: 'M5 2.5h6l4 4v11H5zM11 2.5v4h4M10 9.5v5M7.5 12h5',
   newfolder: 'M2.5 5.5h5l1.5 2h8.5v9h-15zM10 9.5v5M7.5 12h5',
+  play: 'M6 4l10 6-10 6z',
+  sparkle: 'M10 3l1.6 4.4L16 9l-4.4 1.6L10 15l-1.6-4.4L4 9l4.4-1.6zM15.5 14l.6 1.9 1.9.6-1.9.6-.6 1.9-.6-1.9-1.9-.6 1.9-.6z',
+  bug: 'M10 3a6 6 0 016 6v2a6 6 0 01-12 0V9a6 6 0 016-6zM10 7v5M10 14.5v.2',
   trash: 'M4 5.5h12M8 5.5v-2h4v2M5.5 5.5l.7 11h7.6l.7-11'
 }
 

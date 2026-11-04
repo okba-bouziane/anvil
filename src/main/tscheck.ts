@@ -23,7 +23,7 @@ function loadTypescript(root: string): typeof TS | null {
   }
 }
 
-function findTsconfig(root: string, rel: string): string | null {
+export function findTsconfig(root: string, rel: string): string | null {
   let dir = path.dirname(path.join(root, rel))
   while (dir === root || dir.startsWith(root + path.sep)) {
     const app = path.join(dir, 'tsconfig.app.json')

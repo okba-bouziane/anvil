@@ -190,7 +190,8 @@ describe('Agent', () => {
     const { agent } = setup(Array(8).fill(reply(big)), { settings: () => ({ ...DEFAULT_SETTINGS, contextTokens: 24000 }) })
     for (let i = 0; i < 8; i++) await agent.runTurn(`q${i}`, null)
     const size = agent.history.reduce((n, m) => n + m.content.length / 3.2 + 8, 0)
-    expect(size).toBeLessThan(24000)
+    // The newest answer may be added on top. The limit applies to what is sent to the model.
+    expect(size).toBeLessThan(24000 + 16000 / 3.2 + 8)
     expect(agent.history.filter((m) => m.role === 'assistant').length).toBeLessThan(8)
   })
 

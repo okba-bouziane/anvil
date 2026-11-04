@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import type { FileChange, Hunk } from '../../shared/types'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import type { EditorSettings, FileChange, Hunk } from '../../shared/types'
 import { Icon } from './Icon'
 import { MOD, SHIFT } from './keys'
+import { store } from './models'
 import { monaco, OPTIONS } from './monaco'
 
 const api = window.anvil
@@ -34,6 +35,7 @@ function DiffView({ path, revision, source, onError }: { path: string; revision:
     return () => {
       listeners.forEach((l) => l.dispose())
       const { original, modified } = created.getModel() ?? {}
+      created.setModel(null)
       created.dispose()
       original?.dispose()
       modified?.dispose()
@@ -48,16 +50,20 @@ function DiffView({ path, revision, source, onError }: { path: string; revision:
     void load.then(({ original, modified, change }) => {
       if (stale || !editor.current) return
       const instance = editor.current
-      const old = instance.getModel()
-      const language = monaco.editor.createModel('', undefined, uri(path, `lang-${Date.now()}`))
-      const id = language.getLanguageId()
-      language.dispose()
-      instance.setModel({
-        original: monaco.editor.createModel(original, id, uri(path, `a${Date.now()}`)),
-        modified: monaco.editor.createModel(modified, id, uri(path, `b${Date.now()}`))
-      })
-      old?.original.dispose()
-      old?.modified.dispose()
+      const existing = instance.getModel()
+      if (existing) {
+        // Updating in place: replacing models while a diff is being worked out makes the editor throw.
+        if (existing.original.getValue() !== original) existing.original.setValue(original)
+        if (existing.modified.getValue() !== modified) existing.modified.setValue(modified)
+      } else {
+        const language = monaco.editor.createModel('', undefined, uri(path, `lang-${Date.now()}`))
+        const id = language.getLanguageId()
+        language.dispose()
+        instance.setModel({
+          original: monaco.editor.createModel(original, id, uri(path, `a${Date.now()}`)),
+          modified: monaco.editor.createModel(modified, id, uri(path, `b${Date.now()}`))
+        })
+      }
       hunks.current = change?.hunks ?? []
       place()
     }).catch(onError)
@@ -77,94 +83,132 @@ function DiffView({ path, revision, source, onError }: { path: string; revision:
   )
 }
 
-function FileView({ path, revision, reveal, onError }: { path: string; revision: number; reveal: number | null; onError: (e: unknown) => void }) {
+export interface CursorInfo {
+  line: number
+  column: number
+  language: string
+}
+
+function FileEditor({ path, revision, reveal, hidden, editorSettings, themeName, onCursor, onError }: {
+  path: string
+  revision: number
+  reveal: { line: number; at: number } | null
+  hidden: boolean
+  editorSettings: EditorSettings
+  themeName: string
+  onCursor(info: CursorInfo): void
+  onError: (e: unknown) => void
+}) {
   const host = useRef<HTMLDivElement>(null)
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
-  const [dirty, setDirty] = useState(false)
-  const dirtyRef = useRef(false)
+  const current = useRef<string | null>(null)
+  const formatOnSave = useRef(editorSettings.formatOnSave)
+  formatOnSave.current = editorSettings.formatOnSave
   const [unreadable, setUnreadable] = useState<string | null>(null)
 
   useEffect(() => {
-    const created = monaco.editor.create(host.current!, OPTIONS)
+    const created = monaco.editor.create(host.current!, { ...OPTIONS, model: null })
     editor.current = created
+    const report = () => {
+      const position = created.getPosition()
+      const model = created.getModel()
+      if (position && model) onCursor({ line: position.lineNumber, column: position.column, language: model.getLanguageId() })
+    }
+    const listeners = [created.onDidChangeCursorPosition(report), created.onDidChangeModel(report)]
+    created.addAction({
+      id: 'anvil.save',
+      label: 'Save',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
+      run: async () => {
+        if (formatOnSave.current) await created.getAction('editor.action.formatDocument')?.run()
+        if (current.current) await store.save(current.current).catch(onError)
+      }
+    })
     return () => {
-      created.getModel()?.dispose()
+      listeners.forEach((l) => l.dispose())
       created.dispose()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    editor.current?.updateOptions({ fontSize: editorSettings.fontSize, wordWrap: editorSettings.wordWrap ? 'on' : 'off', minimap: { enabled: editorSettings.minimap } })
+    editor.current?.getModel()?.updateOptions({ tabSize: editorSettings.tabSize })
+  }, [editorSettings])
+
+  useEffect(() => {
+    monaco.editor.setTheme(themeName)
+  }, [themeName])
 
   useEffect(() => {
     const instance = editor.current!
     let stale = false
-    void api.readFile(path).then((text) => {
+    if (current.current && current.current !== path) store.setView(current.current, instance.saveViewState())
+    void store.ensure(path).then((model) => {
       if (stale) return
-      const current = instance.getModel()
-      const sameFile = current?.uri.path === uri(path, 'file').path
-      if (sameFile && current!.getValue() === text) return
-      if (sameFile && dirtyRef.current) return // keep what the user is typing
-      current?.dispose()
-      const model = monaco.editor.createModel(text, undefined, uri(path, 'file'))
-      instance.setModel(model)
-      dirtyRef.current = false
-      setDirty(false)
-      model.onDidChangeContent(() => {
-        dirtyRef.current = true
-        setDirty(true)
-      })
-    }).then(() => {
-      if (reveal && !stale) {
-        instance.revealLineInCenter(reveal)
-        instance.setPosition({ lineNumber: reveal, column: 1 })
-        instance.focus()
+      setUnreadable(null)
+      if (instance.getModel() !== model) {
+        instance.setModel(model)
+        model.updateOptions({ tabSize: editorSettings.tabSize })
+        const view = store.view(path)
+        if (view) instance.restoreViewState(view)
       }
+      current.current = path
+      instance.focus()
     }).catch((e: Error) => {
-      if (/not a text file|too large/.test(e.message)) setUnreadable(e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''))
-      else onError(e)
+      const message = e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+      if (/not a text file|too large/.test(message)) {
+        instance.setModel(null)
+        setUnreadable(message)
+      } else onError(e)
     })
     return () => { stale = true }
-  }, [path, revision, reveal, onError])
-
-  useEffect(() => {
-    const instance = editor.current!
-    const command = instance.addAction({
-      id: 'anvil.save',
-      label: 'Save',
-      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
-      run: () => {
-        void api.writeFile(path, instance.getValue()).then(() => {
-          dirtyRef.current = false
-          setDirty(false)
-        }).catch(onError)
-      }
-    })
-    return () => command.dispose()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, onError])
 
+  useEffect(() => {
+    void store.refresh()
+  }, [revision])
+
+  useEffect(() => {
+    if (!reveal) return
+    const instance = editor.current!
+    void store.ensure(path).then((model) => {
+      if (instance.getModel() !== model) instance.setModel(model)
+      instance.revealLineInCenter(reveal.line)
+      instance.setPosition({ lineNumber: reveal.line, column: 1 })
+      instance.focus()
+    }).catch(() => {})
+  }, [reveal, path])
+
   return (
-    <>
-      {dirty && <div className="unsaved">Unsaved changes. Press {MOD}S to save.</div>}
+    <div className="file-editor" style={{ display: hidden ? 'none' : 'flex' }}>
       {unreadable && <div className="pane-empty">{unreadable}</div>}
       <div className="monaco-host" ref={host} style={{ display: unreadable ? 'none' : undefined }} />
-    </>
+    </div>
   )
 }
 
-export function EditorPane({ path, tabs, change, revision, gitDiff, reveal, onSelect, onClose, onError }: {
+export function EditorPane({ path, tabs, change, revision, gitDiff, reveal, editorSettings, themeName, onCursor, onSelect, onClose, onError }: {
   path: string | null
   tabs: string[]
   change: FileChange | undefined
   revision: number
   gitDiff: boolean
-  reveal: number | null
+  reveal: { line: number; at: number } | null
+  editorSettings: EditorSettings
+  themeName: string
+  onCursor(info: CursorInfo): void
   onSelect(path: string): void
   onClose(path: string): void
   onError: (e: unknown) => void
 }) {
+  useSyncExternalStore(store.subscribe, store.version)
   if (!path) {
     return (
       <div className="pane-empty welcome">
         <div className="mark" />
-        <p>Pick a file, or describe a change in the chat.</p>
+        <p>Pick a file to start.</p>
         <div className="keys"><kbd>{MOD}P</kbd> Open a file <kbd>{SHIFT}{MOD}F</kbd> Search <kbd>{MOD}J</kbd> Terminal <kbd>{MOD},</kbd> Settings</div>
       </div>
     )
@@ -175,6 +219,7 @@ export function EditorPane({ path, tabs, change, revision, gitDiff, reveal, onSe
       <div className="tabbar">
         {tabs.map((t) => (
           <div key={t} className={`tab ${t === path ? 'active' : ''}`} title={t} onClick={() => onSelect(t)}>
+            {store.dirty(t) && <span className="dirty-dot" title="Not saved yet" />}
             <span>{t.split('/').pop()}</span>
             <button className="tab-close" aria-label={`Close ${t}`} onClick={(e) => { e.stopPropagation(); onClose(t) }}><Icon name="close" size={11} /></button>
           </div>
@@ -190,11 +235,9 @@ export function EditorPane({ path, tabs, change, revision, gitDiff, reveal, onSe
           </span>
         )}
       </div>
-      {gitDiff
-        ? <DiffView key={`git:${path}`} path={path} revision={revision} source="git" onError={onError} />
-        : change
-          ? <DiffView key={path} path={path} revision={revision} source="review" onError={onError} />
-          : <FileView key={path} path={path} revision={revision} reveal={reveal} onError={onError} />}
+      {gitDiff && <DiffView key={`git:${path}`} path={path} revision={revision} source="git" onError={onError} />}
+      {!gitDiff && change && <DiffView key={path} path={path} revision={revision} source="review" onError={onError} />}
+      <FileEditor path={path} revision={revision} reveal={reveal} hidden={gitDiff || !!change} editorSettings={editorSettings} themeName={themeName} onCursor={onCursor} onError={onError} />
     </div>
   )
 }

@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ChatSummary, Checkpoint, FileChange, ModelStatus, ProjectState, ProviderId, Settings, UiItem } from '../../shared/types'
-import { PROVIDER_LABEL } from '../../shared/types'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import type { ChatSummary, Checkpoint, FileChange, ImportedAssets, IntelDiagnostic, ModelStatus, ProjectState, ScriptEntry, Settings, UiItem } from '../../shared/types'
+import { DEFAULT_SETTINGS, PROVIDER_LABEL } from '../../shared/types'
 import { Chat } from './Chat'
-import { EditorPane } from './Editor'
+import { EditorPane, type CursorInfo } from './Editor'
 import { Icon } from './Icon'
 import { MOD, modPressed } from './keys'
-import { SettingsModal } from './Settings'
+import { registerIntel, registerSnippets } from './intel'
+import { store } from './models'
+import { defineImportedTheme } from './monaco'
+import { SettingsModal, type SettingsTab } from './Settings'
 import { Sidebar, type SidebarTab } from './Sidebar'
 import { TerminalPanel } from './Terminal'
 
@@ -81,12 +84,17 @@ export function App() {
   const [revision, setRevision] = useState(0)
   const [tab, setTab] = useState<SidebarTab>('files')
   const [gitDiff, setGitDiff] = useState(false)
-  const [reveal, setReveal] = useState<number | null>(null)
+  const [reveal, setReveal] = useState<{ line: number; at: number } | null>(null)
+  const [panelView, setPanelView] = useState<'terminal' | 'problems'>('terminal')
+  const [cursor, setCursor] = useState<CursorInfo | null>(null)
+  const [assets, setAssets] = useState<ImportedAssets>({ snippets: [], themes: [] })
+  const [newVersion, setNewVersion] = useState<{ version: string; url: string } | null>(null)
+  const [systemDark, setSystemDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches)
   const [branch, setBranch] = useState<string | null>(null)
   const [terminalOpen, setTerminalOpen] = useState(false)
   const [terminalCommand, setTerminalCommand] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [modal, setModal] = useState<ProviderId | null>(null)
+  const [modal, setModal] = useState<SettingsTab | null>(null)
   const [quick, setQuick] = useState(false)
   const [files, setFiles] = useState<string[]>([])
   const [chatWidth, setChatWidth] = useState(440)
@@ -103,7 +111,7 @@ export function App() {
   }, [])
   const openAt = (path: string, line: number) => {
     openFile(path)
-    setReveal(line)
+    setReveal({ line, at: Date.now() })
   }
   const openDiff = (path: string) => {
     openFile(path)
@@ -115,6 +123,8 @@ export function App() {
     setSelected((cur) => (cur && match(cur) ? (to ? to + cur.slice(from.length) : null) : cur))
   }
   const closeTab = (path: string) => {
+    if (store.dirty(path) && !window.confirm(`Close ${path.split('/').pop()} without saving your changes?`)) return
+    store.close(path)
     const next = tabs.filter((t) => t !== path)
     setTabs(next)
     if (selected === path) setSelected(next[next.length - 1] ?? null)
@@ -129,6 +139,7 @@ export function App() {
 
   const load = useCallback((state: ProjectState | null) => {
     if (!state) return
+    store.reset()
     setProject(state)
     setBranch(state.branch)
     setGitDiff(false)
@@ -186,6 +197,9 @@ export function App() {
         case 'file-changed':
           openFile(event.path)
           break
+        case 'update':
+          setNewVersion({ version: event.version, url: event.url })
+          break
         case 'tree':
           setRevision((r) => r + 1)
           void api.listFiles().then(setFiles).catch(() => {})
@@ -205,9 +219,63 @@ export function App() {
     }
   }, [load, onError, openFile, poll])
 
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
+  const selectedRef = useRef(selected)
+  selectedRef.current = selected
+  const closeRef = useRef(closeTab)
+  closeRef.current = closeTab
+
+  const loadAssets = useCallback(() => {
+    void api.importedAssets().then((a) => {
+      a.themes.forEach(defineImportedTheme)
+      registerSnippets(a.snippets)
+      setAssets(a)
+    }).catch(() => {})
+    void api.getSettings().then(setSettings).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    registerIntel(openAt)
+    loadAssets()
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const onChange = (e: MediaQueryListEvent) => setSystemDark(e.matches)
+    media.addEventListener('change', onChange)
+    const warnUnsaved = (e: BeforeUnloadEvent) => { if (store.anyDirty()) e.preventDefault() }
+    window.addEventListener('beforeunload', warnUnsaved)
+    return () => {
+      media.removeEventListener('change', onChange)
+      window.removeEventListener('beforeunload', warnUnsaved)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const dark = (settings?.theme ?? 'system') === 'system' ? systemDark : settings?.theme === 'dark'
+  useEffect(() => { document.documentElement.dataset.theme = dark ? 'dark' : 'light' }, [dark])
+  useEffect(() => { if (settings) store.configure({ autoSave: settings.editor.autoSave, onError }) }, [settings, onError])
+  useSyncExternalStore(store.subscribe, store.version)
+  const problems: IntelDiagnostic[] = store.problems()
+  const errorCount = problems.filter((d) => d.severity === 'error').length
+  const warningCount = problems.length - errorCount
+  const refreshProblems = () => {
+    const target = selected && /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/.test(selected) ? selected : files.find((f) => /\.(ts|tsx)$/.test(f))
+    if (target) void api.intel<IntelDiagnostic[]>('projectProblems', target).then(store.setProjectProblems).catch(onError)
+  }
+  const openProblems = () => { setPanelView('problems'); setTerminalOpen(true); refreshProblems() }
+  const runScript = (script: ScriptEntry) => {
+    const win = api.platform === 'win32'
+    const root = project?.root ?? '.'
+    const dir = script.dir === '.' ? root : `${root}/${script.dir}`
+    setPanelView('terminal')
+    setTerminalOpen(true)
+    setTerminalCommand(`cd "${dir}"${win ? ';' : ' &&'} npm run ${script.name}`)
+  }
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!modPressed(e)) return
+      if (e.key === 'l' && project) { e.preventDefault(); void api.setSettings({ showAgent: !settingsRef.current?.showAgent }).then(setSettings) }
+      if (e.key === 'w' && project && selectedRef.current) { e.preventDefault(); closeRef.current(selectedRef.current) }
       if (e.key === 'j' && project) { e.preventDefault(); setTerminalOpen((o) => !o) }
       if (e.key.toLowerCase() === 'f' && e.shiftKey && project) { e.preventDefault(); setTab('search') }
       if (e.key === 'p' && project) { e.preventDefault(); void api.listFiles().then(setFiles); setQuick(true) }
@@ -231,6 +299,9 @@ export function App() {
   const open = () => void api.openProject().then(load).catch(onError)
   const change = changes.find((c) => c.path === selected)
   const provider = settings?.provider ?? 'local'
+  const showAgent = settings?.showAgent ?? true
+  const importedTheme = assets.themes.find((t) => t.id === settings?.editorTheme)
+  const themeName = importedTheme?.id ?? (dark ? 'anvil' : 'anvil-light')
   const modelName = settings ? (settings.models[provider] || 'No model').split('/').pop() : ''
 
   return (
@@ -242,29 +313,37 @@ export function App() {
         {project && <button className="ghost project" title={project.root} onClick={open}>{project.name}</button>}
         {branch && <button className="ghost pill" title="Open Git" onClick={() => setTab('git')}><Icon name="branch" size={12} />{branch}</button>}
         <span className="spacer" />
-        <button className={`model ${status}`} title="Change model" onClick={() => setModal(provider)}>
+        {project && <button className={`icon-btn ${showAgent ? 'on' : ''}`} aria-label="Agent panel" title={`${showAgent ? 'Hide' : 'Show'} the agent (${MOD}L)`} onClick={() => update({ showAgent: !showAgent })}><Icon name="sparkle" /></button>}
+        {showAgent && <button className={`model ${status}`} title="Change model" onClick={() => setModal(provider)}>
           <span className="dot" />
           <span className="model-provider">{PROVIDER_LABEL[provider]}</span>
           <span className="model-label">{modelName}</span>
           <span className="model-status">{STATUS_LABEL[status]}</span>
-        </button>
-        {provider === 'local' && status === 'offline' && api.platform === 'darwin' && <button onClick={() => void api.startModel().then(setStatus).catch(onError)}>Start model</button>}
-        {provider === 'local' && status === 'online' && <button disabled={busy} onClick={() => void api.stopModel().then(setStatus).catch(onError)}>Stop model</button>}
+        </button>}
+        {showAgent && provider === 'local' && status === 'offline' && api.platform === 'darwin' && <button onClick={() => void api.startModel().then(setStatus).catch(onError)}>Start model</button>}
+        {showAgent && provider === 'local' && status === 'online' && <button disabled={busy} onClick={() => void api.stopModel().then(setStatus).catch(onError)}>Stop model</button>}
         {project && <button className={`icon-btn ${terminalOpen ? 'on' : ''}`} aria-label="Terminal" title={`Terminal (${MOD}J)`} onClick={() => setTerminalOpen(!terminalOpen)}><Icon name="terminal" /></button>}
         <button className="icon-btn" aria-label="Settings" title={`Settings (${MOD},)`} onClick={() => setModal(provider)}><Icon name="gear" /></button>
       </header>
+      {newVersion && (
+        <div className="banner update" role="status">
+          Anvil {newVersion.version} is available.
+          <button className="link" onClick={() => void api.openRelease(newVersion.url)}>See the release</button>
+          <span onClick={() => setNewVersion(null)}>Dismiss</span>
+        </div>
+      )}
       {error && <div className="banner" role="alert" onClick={() => setError(null)}><Icon name="warn" size={13} />{error}<span>Dismiss</span></div>}
       {!project
         ? <Welcome recent={settings?.recentProjects ?? []} onOpen={open} onRecent={(r) => void api.openProjectPath(r).then(load).catch(onError)} />
         : (
-          <main className="panes" style={{ gridTemplateColumns: `248px minmax(0,1fr) 5px ${chatWidth}px` }}>
-            <Sidebar changes={changes} selected={selected} revision={revision} tab={tab} setTab={setTab} onOpen={openFile} onOpenAt={openAt} onDiff={openDiff} onBranch={setBranch} onRenamed={renamed} onError={onError} />
+          <main className="panes" style={{ gridTemplateColumns: showAgent ? `248px minmax(0,1fr) 5px ${chatWidth}px` : '248px minmax(0,1fr)' }}>
+            <Sidebar changes={changes} selected={selected} revision={revision} tab={tab} setTab={setTab} onOpen={openFile} onOpenAt={openAt} onDiff={openDiff} onBranch={setBranch} onRenamed={renamed} onRunScript={runScript} onBeforeReplace={store.saveAll} onError={onError} />
             <div className="center">
-              <div className="center-top"><EditorPane path={selected} tabs={tabs} change={change} revision={revision} gitDiff={gitDiff} reveal={reveal} onSelect={(t) => { setSelected(t); setGitDiff(false) }} onClose={closeTab} onError={onError} /></div>
-              <TerminalPanel open={terminalOpen} projectKey={project.root} command={terminalCommand} onCommandDone={clearCommand} onClose={() => setTerminalOpen(false)} onError={onError} />
+              <div className="center-top"><EditorPane path={selected} tabs={tabs} change={change} revision={revision} gitDiff={gitDiff} reveal={reveal} editorSettings={settings?.editor ?? DEFAULT_SETTINGS.editor} themeName={themeName} onCursor={setCursor} onSelect={(t) => { setSelected(t); setGitDiff(false) }} onClose={closeTab} onError={onError} /></div>
+              <TerminalPanel open={terminalOpen} view={panelView} setView={setPanelView} projectKey={project.root} command={terminalCommand} dark={dark} problems={problems} onOpenProblem={openAt} onRefreshProblems={refreshProblems} onCommandDone={clearCommand} onClose={() => setTerminalOpen(false)} onError={onError} />
             </div>
-            <div className="resizer" onPointerDown={() => { dragging.current = true; document.body.classList.add('resizing') }} />
-            <Chat
+            {showAgent && <div className="resizer" onPointerDown={() => { dragging.current = true; document.body.classList.add('resizing') }} />}
+            {showAgent && <Chat
               items={items} chats={chats} activeChat={activeChat} checkpoints={checkpoints} busy={busy} live={live} context={context} settings={settings}
               hasProject ready={status === 'online'} activeFile={selected} files={files} onOpenFile={openFile} onError={onError}
               onNewChat={() => void api.newChat().then(showChat).catch(onError)}
@@ -272,11 +351,21 @@ export function App() {
               onDeleteChat={(id) => void api.deleteChat(id).then(showChat).catch(onError)}
               onSetting={update}
               onOpenModels={() => setModal(provider)}
-            />
+              onBeforeSend={store.saveAll}
+            />}
           </main>
         )}
+      {project && (
+        <footer className="statusbar">
+          <button className={errorCount ? 'has-errors' : warningCount ? 'has-warnings' : ''} aria-label="Problems" title="Open Problems" onClick={openProblems}><Icon name="bug" size={12} />{errorCount} errors, {warningCount} warnings</button>
+          <span className="spacer" />
+          {cursor && selected && <span>Ln {cursor.line}, Col {cursor.column}</span>}
+          {cursor && selected && <span>{cursor.language}</span>}
+          {selected && <span>{settings?.editor.autoSave ? 'Auto-save on' : store.dirty(selected) ? 'Not saved' : 'Saved'}</span>}
+        </footer>
+      )}
       {quick && <QuickOpen files={files} onClose={() => setQuick(false)} onPick={(f) => { openFile(f); setQuick(false) }} />}
-      {modal && settings && <SettingsModal settings={settings} initial={modal} onSettings={update} onStatus={poll} onClose={() => setModal(null)} onError={onError} hasProject={!!project} onRunInTerminal={(command) => { setModal(null); setTerminalOpen(true); setTerminalCommand(command) }} />}
+      {modal && settings && <SettingsModal settings={settings} initial={modal} assets={assets} onImported={loadAssets} onSettings={update} onStatus={poll} onClose={() => setModal(null)} onError={onError} hasProject={!!project} onRunInTerminal={(command) => { setModal(null); setTerminalOpen(true); setTerminalCommand(command) }} />}
     </div>
   )
 }

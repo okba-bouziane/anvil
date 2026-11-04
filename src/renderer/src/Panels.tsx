@@ -1,16 +1,53 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { GitStatus, SearchHit } from '../../shared/types'
+import type { GitStatus, ScriptEntry, SearchHit } from '../../shared/types'
 import { Icon } from './Icon'
 
 const api = window.anvil
 
-export function SearchPanel({ onOpen, onError }: { onOpen(path: string, line: number): void; onError(e: unknown): void }) {
+export function ScriptsPanel({ revision, onRun, onError }: { revision: number; onRun(script: ScriptEntry): void; onError(e: unknown): void }) {
+  const [scripts, setScripts] = useState<ScriptEntry[] | null>(null)
+  useEffect(() => { void api.listScripts().then(setScripts).catch(onError) }, [revision, onError])
+  if (!scripts) return null
+  if (!scripts.length) return <div className="panel-body center-text"><p>No npm scripts found in this project.</p></div>
+  const dirs = [...new Set(scripts.map((s) => s.dir))]
+  return (
+    <div className="panel-body scripts">
+      <div className="git-list">
+        {dirs.map((dir) => (
+          <div key={dir}>
+            <div className="script-dir">{dir === '.' ? 'Project root' : dir}</div>
+            {scripts.filter((s) => s.dir === dir).map((s) => (
+              <div key={s.name} className="script-row" title={`Run ${s.command}`} role="button" onClick={() => onRun(s)}>
+                <Icon name="play" size={12} /><b>{s.name}</b><small>{s.command}</small>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function SearchPanel({ onOpen, onBeforeReplace, onError }: { onOpen(path: string, line: number): void; onBeforeReplace(): Promise<void>; onError(e: unknown): void }) {
   const [query, setQuery] = useState('')
   const [caseSensitive, setCase] = useState(false)
   const [regex, setRegex] = useState(false)
   const [hits, setHits] = useState<SearchHit[] | null>(null)
+  const [replacing, setReplacing] = useState(false)
+  const [replacement, setReplacement] = useState('')
+  const [note, setNote] = useState<string | null>(null)
+
+  const replaceAll = async () => {
+    await onBeforeReplace()
+    const files = new Set((hits ?? []).map((h) => h.path)).size
+    if (!window.confirm(`Replace "${query}" with "${replacement}" in ${files} file${files === 1 ? '' : 's'}? You can review and undo this in Changes.`)) return
+    const result = await api.replaceInProject(query, { caseSensitive, regex }, replacement)
+    setNote(`Replaced ${result.matches} in ${result.files} file${result.files === 1 ? '' : 's'}. Review them in Changes.`)
+    setHits(null)
+  }
 
   const run = () => {
+    setNote(null)
     if (!query.trim()) return setHits(null)
     void api.searchProject(query, { caseSensitive, regex }).then(setHits).catch(onError)
   }
@@ -24,7 +61,15 @@ export function SearchPanel({ onOpen, onError }: { onOpen(path: string, line: nu
         <input id="project-search" autoFocus value={query} spellCheck={false} placeholder="Search in project" onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') run() }} />
         <button className={`flag ${caseSensitive ? 'on' : ''}`} title="Match case" aria-pressed={caseSensitive} onClick={() => setCase(!caseSensitive)}>Aa</button>
         <button className={`flag ${regex ? 'on' : ''}`} title="Use a regular expression" aria-pressed={regex} onClick={() => setRegex(!regex)}>.*</button>
+        <button className={`flag ${replacing ? 'on' : ''}`} title="Replace" aria-label="Show replace" aria-pressed={replacing} onClick={() => setReplacing(!replacing)}>ab</button>
       </div>
+      {replacing && (
+        <div className="replace-box">
+          <input id="project-replace" value={replacement} spellCheck={false} placeholder="Replace with" onChange={(e) => setReplacement(e.target.value)} />
+          <button disabled={!hits?.length} onClick={() => void replaceAll().catch(onError)}>Replace all</button>
+        </div>
+      )}
+      {note && <div className="search-count">{note}</div>}
       {hits && <div className="search-count">{hits.length >= 500 ? 'First 500 results' : `${hits.length} result${hits.length === 1 ? '' : 's'}`} in {groups.size} file{groups.size === 1 ? '' : 's'}</div>}
       <div className="search-results">
         {[...groups].map(([file, list]) => (

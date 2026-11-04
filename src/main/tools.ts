@@ -173,6 +173,41 @@ export function searchProject(root: string, query: string, options: SearchOption
   return out
 }
 
+/** Replaces every match in the project's text files. Returns the new contents, for the caller to review and write. */
+export function replaceInFiles(root: string, query: string, options: SearchOptions, replacement: string): { path: string; content: string; matches: number }[] {
+  if (!query) return []
+  const source = options.regex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const count = new RegExp(source, options.caseSensitive ? 'g' : 'gi')
+  const out: { path: string; content: string; matches: number }[] = []
+  for (const rel of walkFiles(root)) {
+    const file = path.join(root, rel)
+    if (fs.statSync(file).size > 1_000_000) continue
+    const text = fs.readFileSync(file, 'utf8')
+    if (text.includes('\0')) continue
+    const matches = text.match(count)?.length ?? 0
+    if (!matches) continue
+    // Plain text search replaces with plain text, so a $ in the replacement stays a $.
+    out.push({ path: rel, matches, content: options.regex ? text.replace(count, replacement) : text.replace(count, () => replacement) })
+  }
+  return out
+}
+
+/** package.json scripts in the project, for running with one click. */
+export function findScripts(root: string): { dir: string; name: string; command: string }[] {
+  const out: { dir: string; name: string; command: string }[] = []
+  for (const rel of walkFiles(root)) {
+    if (path.posix.basename(rel) !== 'package.json' || rel.split('/').length > 3) continue
+    try {
+      const scripts = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8')).scripts ?? {}
+      const dir = path.posix.dirname(rel)
+      for (const [name, command] of Object.entries(scripts)) if (typeof command === 'string') out.push({ dir, name, command })
+    } catch {
+      /* not valid JSON, so it has no scripts we can use */
+    }
+  }
+  return out
+}
+
 /** Keeps the end of long output, where errors usually are. */
 export function trimOutput(text: string, limit = OUTPUT_LIMIT): string {
   return text.length <= limit ? text : `[Earlier output not shown]\n${text.slice(-limit)}`
