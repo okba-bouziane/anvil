@@ -108,7 +108,8 @@ export function clientFor(getSettings: () => Settings, getKey: (provider: Provid
       model: settings.models[provider],
       apiKey: provider === 'local' ? null : getKey(provider),
       // OpenAI's current models take a different limit field and no custom temperature.
-      strictOpenAi: provider === 'openai'
+      strictOpenAi: provider === 'openai',
+      reasoningEffort: provider === 'openai' && settings.openaiEffort !== 'default' ? settings.openaiEffort : undefined
     }
   })
   return { stream: (request, callbacks) => (getSettings().provider === 'anthropic' ? anthropic : openAi).stream(request, callbacks) }

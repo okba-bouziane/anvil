@@ -5,17 +5,20 @@ export interface EditorSettings {
   minimap: boolean
   autoSave: boolean
   formatOnSave: boolean
+  blame: boolean
 }
 
 export type ProviderId = 'local' | 'anthropic' | 'openai' | 'custom'
 export type AgentMode = 'agent' | 'plan' | 'ask'
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
+export type OpenAiEffort = 'default' | 'minimal' | 'low' | 'medium' | 'high'
 
 export interface Settings {
   provider: ProviderId
   models: Record<ProviderId, string>
   baseUrls: Record<ProviderId, string>
   effort: Effort
+  openaiEffort: OpenAiEffort
   autoAcceptEdits: boolean
   autoRunCommands: boolean
   contextTokens: number
@@ -36,13 +39,14 @@ export const DEFAULT_SETTINGS: Settings = {
   models: { local: 'mlx-community/Qwen3.5-9B-4bit', anthropic: 'claude-opus-5-5', openai: '', custom: '' },
   baseUrls: { local: 'http://127.0.0.1:8080/v1', anthropic: '', openai: 'https://api.openai.com/v1', custom: 'http://127.0.0.1:1234/v1' },
   effort: 'high',
+  openaiEffort: 'default',
   autoAcceptEdits: false,
   autoRunCommands: false,
   contextTokens: 24000,
   maxOutputTokens: 4096,
   temperature: 0.2,
   theme: 'system',
-  editor: { fontSize: 12.5, tabSize: 2, wordWrap: false, minimap: false, autoSave: true, formatOnSave: false },
+  editor: { fontSize: 12.5, tabSize: 2, wordWrap: false, minimap: false, autoSave: true, formatOnSave: false, blame: true },
   showAgent: true,
   inlineSuggest: true,
   checkUpdates: true,
@@ -211,6 +215,29 @@ export interface GitFile {
   code: string
 }
 
+export interface CommitInfo {
+  sha: string
+  parents: string[]
+  author: string
+  /** Seconds since 1970. */
+  time: number
+  refs: string[]
+  subject: string
+}
+
+export interface CommitFile {
+  status: string
+  path: string
+}
+
+export interface BlameLine {
+  sha: string
+  line: number
+  author: string
+  time: number
+  subject: string
+}
+
 export interface GitStatus {
   isRepo: boolean
   branch: string | null
@@ -267,6 +294,12 @@ export interface AnvilApi {
   gitCommit(message: string): Promise<void>
   gitSync(action: 'pull' | 'push'): Promise<string>
   gitDiff(path: string): Promise<{ original: string; modified: string }>
+  gitLog(limit: number, path?: string): Promise<CommitInfo[]>
+  gitCommitFiles(sha: string): Promise<CommitFile[]>
+  gitCommitDiff(sha: string, path: string): Promise<{ original: string; modified: string }>
+  gitBlame(path: string): Promise<BlameLine[]>
+  gitBranches(): Promise<{ current: string | null; all: string[] }>
+  gitCheckout(name: string, create: boolean): Promise<void>
   terminalCreate(): Promise<string>
   terminalWrite(id: string, data: string): Promise<void>
   terminalResize(id: string, cols: number, rows: number): Promise<void>

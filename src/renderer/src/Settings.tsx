@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { EditorSettings, Effort, ImportedAssets, LocalSetup, ModelOption, ProviderId, Settings, VscodeImport } from '../../shared/types'
+import type { EditorSettings, Effort, OpenAiEffort, ImportedAssets, LocalSetup, ModelOption, ProviderId, Settings, VscodeImport } from '../../shared/types'
 import { PROVIDER_LABEL } from '../../shared/types'
 import { Icon } from './Icon'
 
@@ -81,6 +81,7 @@ function EditorPanel({ settings, assets, onSettings, onImported, onError }: { se
         {toggle('Auto-save', 'Saves about a second after you stop typing', e.autoSave, (v) => set({ autoSave: v }))}
         {toggle('Format on save', 'TypeScript and JavaScript files', e.formatOnSave, (v) => set({ formatOnSave: v }))}
         {toggle('Word wrap', 'Wraps long lines', e.wordWrap, (v) => set({ wordWrap: v }))}
+        {toggle('Show who changed each line', 'Git author, date and message at the end of the current line', e.blame, (v) => set({ blame: v }))}
         {toggle('Minimap', 'A small overview beside the code', e.minimap, (v) => set({ minimap: v }))}
         {toggle('Suggestions from the model', 'Grey text as you pause, Tab to accept. Local and custom local servers only', settings.inlineSuggest, (v) => onSettings({ inlineSuggest: v }))}
         {toggle('Check for updates', 'Asks GitHub for the latest version number', settings.checkUpdates, (v) => onSettings({ checkUpdates: v }))}
@@ -238,6 +239,13 @@ export function SettingsModal({ settings, initial, assets, onImported, onSetting
               </label>
             )}
 
+            {tab === 'openai' && (
+              <label className="field"><span>Effort, for models that support it</span>
+                <select id="openai-effort" value={settings.openaiEffort} onChange={(e) => onSettings({ openaiEffort: e.target.value as OpenAiEffort })}>
+                  {(['default', 'minimal', 'low', 'medium', 'high'] as OpenAiEffort[]).map((v) => <option key={v} value={v}>{v === 'default' ? "Model's default" : v}</option>)}
+                </select>
+              </label>
+            )}
             {tab === 'anthropic' && (
               <label className="field"><span>Effort</span>
                 <select id="effort" value={settings.effort} onChange={(e) => onSettings({ effort: e.target.value as Effort })}>

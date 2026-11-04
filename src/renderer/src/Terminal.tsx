@@ -5,6 +5,7 @@ import '@xterm/xterm/css/xterm.css'
 import type { IntelDiagnostic } from '../../shared/types'
 import { Icon } from './Icon'
 import { MOD } from './keys'
+import { HistoryPanel } from './Panels'
 
 const api = window.anvil
 const THEMES = {
@@ -81,11 +82,17 @@ function Problems({ list, onOpen, onRefresh }: { list: IntelDiagnostic[]; onOpen
   )
 }
 
+export type PanelView = 'terminal' | 'problems' | 'history'
+
 /** `command` is typed into the terminal when another part of the app asks for it. */
-export function TerminalPanel({ open, view, setView, projectKey, command, dark, problems, onOpenProblem, onRefreshProblems, onCommandDone, onClose, onError }: {
+export function TerminalPanel({ open, view, setView, projectKey, command, dark, problems, revision, historyFile, onClearHistoryFile, onOpenCommitDiff, onOpenProblem, onRefreshProblems, onCommandDone, onClose, onError }: {
   open: boolean
-  view: 'terminal' | 'problems'
-  setView(view: 'terminal' | 'problems'): void
+  view: PanelView
+  setView(view: PanelView): void
+  revision: number
+  historyFile: string | null
+  onClearHistoryFile(): void
+  onOpenCommitDiff(sha: string, path: string): void
   projectKey: string
   command: string | null
   dark: boolean
@@ -123,6 +130,7 @@ export function TerminalPanel({ open, view, setView, projectKey, command, dark, 
     <div className="terminal-panel" style={{ display: open ? 'flex' : 'none' }}>
       <div className="terminal-tabs">
         <button className={`view-tab ${view === 'problems' ? 'active' : ''}`} onClick={() => setView('problems')}>Problems{problems.length > 0 && ` ${problems.length}`}</button>
+        <button className={`view-tab ${view === 'history' ? 'active' : ''}`} onClick={() => setView('history')}>History</button>
         {shells.map((id, i) => (
           <div key={id} className={`tab ${view === 'terminal' && id === active ? 'active' : ''}`} onClick={() => { setActive(id); setView('terminal') }}>
             <Icon name="terminal" size={12} /><span>Terminal {i + 1}</span>
@@ -134,6 +142,7 @@ export function TerminalPanel({ open, view, setView, projectKey, command, dark, 
         <button className="icon-btn" aria-label="Hide panel" title={`Hide (${MOD}J)`} onClick={onClose}><Icon name="close" size={13} /></button>
       </div>
       {view === 'problems' && <Problems list={problems} onOpen={onOpenProblem} onRefresh={onRefreshProblems} />}
+      {view === 'history' && <HistoryPanel revision={revision} file={historyFile} onClearFile={onClearHistoryFile} onOpenDiff={onOpenCommitDiff} onError={onError} />}
       <div className="terminal-body" style={{ display: view === 'terminal' ? 'block' : 'none' }}>
         {shells.map((id) => <Shell key={id} id={id} dark={dark} visible={open && view === 'terminal' && id === active} pending={id === active ? command : null} onSent={onCommandDone} />)}
       </div>

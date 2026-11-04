@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
-import type { GitStatus, ScriptEntry, SearchHit } from '../../shared/types'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { layoutGraph, type GraphRow } from '../../shared/gitgraph'
+import type { CommitFile, CommitInfo, GitStatus, ScriptEntry, SearchHit } from '../../shared/types'
 import { Icon } from './Icon'
 
 const api = window.anvil
@@ -87,9 +88,130 @@ export function SearchPanel({ onOpen, onBeforeReplace, onError }: { onOpen(path:
   )
 }
 
+const ago = (seconds: number) => {
+  const d = Date.now() / 1000 - seconds
+  if (d < 60) return 'just now'
+  const units: [number, string][] = [[31536000, 'year'], [2592000, 'month'], [86400, 'day'], [3600, 'hour'], [60, 'minute']]
+  for (const [size, name] of units) {
+    const n = Math.floor(d / size)
+    if (n >= 1) return `${n} ${name}${n > 1 ? 's' : ''} ago`
+  }
+  return 'just now'
+}
+export { ago }
+
+const ROW = 26
+const LANE = 13
+const LANE_COLORS = ['#7c7ff5', '#34d399', '#f59e0b', '#f472b6', '#38bdf8', '#a78bfa', '#fb7185']
+
+function GraphCell({ row, width }: { row: GraphRow; width: number }) {
+  const x = (lane: number) => lane * LANE + 8
+  const color = (lane: number) => LANE_COLORS[lane % LANE_COLORS.length]
+  const mid = ROW / 2
+  return (
+    <svg className="graph-cell" width={width} height={ROW} aria-hidden="true">
+      {row.top.map((l) => <line key={`t${l}`} x1={x(l)} y1={0} x2={l === row.lane ? x(l) : x(l)} y2={mid} stroke={color(l)} strokeWidth="1.5" />)}
+      {row.bottom.map((b) => <path key={`b${b.from}-${b.to}`} d={`M${x(b.from)} ${mid} C${x(b.from)} ${ROW - 4} ${x(b.to)} ${mid + 4} ${x(b.to)} ${ROW}`} fill="none" stroke={color(Math.max(b.from, b.to))} strokeWidth="1.5" />)}
+      <circle cx={x(row.lane)} cy={mid} r="4" fill={color(row.lane)} stroke="var(--editor)" strokeWidth="1.5" />
+    </svg>
+  )
+}
+
+/** The commit tree: every branch, with who changed what and when. */
+export function HistoryPanel({ revision, file, onClearFile, onOpenDiff, onError }: { revision: number; file: string | null; onClearFile(): void; onOpenDiff(sha: string, path: string): void; onError(e: unknown): void }) {
+  const [commits, setCommits] = useState<CommitInfo[] | null>(null)
+  const [limit, setLimit] = useState(300)
+  const [open, setOpen] = useState<string | null>(null)
+  const [files, setFiles] = useState<CommitFile[]>([])
+  const [filter, setFilter] = useState('')
+
+  useEffect(() => {
+    void api.gitLog(limit, file ?? undefined).then(setCommits).catch(() => setCommits([]))
+  }, [limit, file, revision])
+
+  const rows = useMemo(() => layoutGraph(commits ?? []), [commits])
+  if (!commits) return null
+  const width = Math.max(1, ...rows.map((r) => r.lanes)) * LANE + 8
+  const query = filter.toLowerCase()
+  const matches = (c: CommitInfo) => !query || `${c.subject} ${c.author} ${c.sha} ${c.refs.join(' ')}`.toLowerCase().includes(query)
+
+  const toggle = (sha: string) => {
+    if (open === sha) return setOpen(null)
+    setOpen(sha)
+    setFiles([])
+    void api.gitCommitFiles(sha).then(setFiles).catch(onError)
+  }
+
+  return (
+    <div className="history">
+      <div className="history-bar">
+        <input id="history-filter" value={filter} spellCheck={false} placeholder="Filter by message, author, branch or commit" onChange={(e) => setFilter(e.target.value)} />
+        {file && <span className="pill-file" title={file}>History of {file.split('/').pop()}<button className="tab-close" aria-label="Show all commits" onClick={onClearFile}><Icon name="close" size={11} /></button></span>}
+        <span className="spacer" />
+        <small>{commits.length} commit{commits.length === 1 ? '' : 's'}</small>
+      </div>
+      <div className="history-list">
+        {!commits.length && <div className="pane-empty small">No commits yet.</div>}
+        {commits.map((c, i) => matches(c) && (
+          <div key={c.sha}>
+            <div className={`commit-row ${open === c.sha ? 'selected' : ''}`} role="button" onClick={() => toggle(c.sha)}>
+              {!query && <GraphCell row={rows[i]} width={width} />}
+              <span className="commit-subject" title={c.subject}>
+                {c.refs.map((r) => <span key={r} className={`ref ${r.startsWith('tag: ') ? 'tag' : r.includes('/') ? 'remote' : ''}`}>{r.replace('tag: ', '')}</span>)}
+                {c.subject}
+              </span>
+              <span className="commit-author">{c.author}</span>
+              <span className="commit-time" title={new Date(c.time * 1000).toLocaleString()}>{ago(c.time)}</span>
+              <code className="commit-sha">{c.sha.slice(0, 7)}</code>
+            </div>
+            {open === c.sha && (
+              <div className="commit-files">
+                {files.map((f) => (
+                  <div key={f.path} className="commit-file" role="button" onClick={() => onOpenDiff(c.sha, f.path)}>
+                    <span className={`git-code code-${f.status}`}>{f.status}</span><span>{f.path}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+        {commits.length >= limit && <button className="link more" onClick={() => setLimit(limit + 500)}>Show more</button>}
+      </div>
+    </div>
+  )
+}
+
+function Branches({ onChanged, onError }: { onChanged(): void; onError(e: unknown): void }) {
+  const [info, setInfo] = useState<{ current: string | null; all: string[] } | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [name, setName] = useState('')
+  const load = useCallback(() => void api.gitBranches().then(setInfo).catch(() => {}), [])
+  useEffect(load, [load])
+  const go = (branch: string, create: boolean) => void api.gitCheckout(branch, create).then(() => { setCreating(false); setName(''); load(); onChanged() }).catch(onError)
+  if (!info) return null
+  if (creating) {
+    return (
+      <div className="branch-row">
+        <input id="new-branch" autoFocus value={name} spellCheck={false} placeholder="New branch name" onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && name.trim()) go(name.trim(), true); if (e.key === 'Escape') setCreating(false) }} />
+        <button className="icon-btn" aria-label="Cancel" onClick={() => setCreating(false)}><Icon name="close" size={13} /></button>
+      </div>
+    )
+  }
+  return (
+    <div className="branch-row">
+      <Icon name="branch" size={13} />
+      <select id="branch-select" aria-label="Branch" value={info.current ?? ''} onChange={(e) => go(e.target.value, false)}>
+        {info.current === null && <option value="">No branch yet</option>}
+        {info.all.map((b) => <option key={b} value={b}>{b}</option>)}
+      </select>
+      <button className="icon-btn" aria-label="New branch" title="New branch" onClick={() => setCreating(true)}><Icon name="plus" size={13} /></button>
+    </div>
+  )
+}
+
 const LABEL: Record<string, string> = { M: 'modified', A: 'added', D: 'deleted', R: 'renamed', C: 'copied', '?': 'new', U: 'conflict' }
 
-export function GitPanel({ revision, onDiff, onBranch, onError }: { revision: number; onDiff(path: string): void; onBranch(branch: string | null): void; onError(e: unknown): void }) {
+export function GitPanel({ revision, onDiff, onBranch, onHistory, onError }: { revision: number; onDiff(path: string): void; onBranch(branch: string | null): void; onHistory(): void; onError(e: unknown): void }) {
   const [state, setState] = useState<GitStatus | null>(null)
   const [message, setMessage] = useState('')
   const [syncing, setSyncing] = useState<string | null>(null)
@@ -122,6 +244,8 @@ export function GitPanel({ revision, onDiff, onBranch, onError }: { revision: nu
   }
   return (
     <div className="panel-body">
+      <Branches onChanged={refresh} onError={onError} />
+      <button className="history-btn" onClick={onHistory}><Icon name="history" size={13} />Commit history</button>
       <div className="commit-box">
         <textarea id="commit-message" rows={2} value={message} placeholder="Commit message" onChange={(e) => setMessage(e.target.value)} />
         <button className="primary" disabled={!message.trim() || !staged.length} onClick={() => void api.gitCommit(message).then(() => { setMessage(''); refresh() }).catch(onError)}>

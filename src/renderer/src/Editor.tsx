@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import type { EditorSettings, FileChange, Hunk } from '../../shared/types'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import type { BlameLine, EditorSettings, FileChange, Hunk } from '../../shared/types'
 import { Icon } from './Icon'
 import { MOD, SHIFT } from './keys'
 import { store } from './models'
+import { ago } from './Panels'
 import { monaco, OPTIONS } from './monaco'
 
 const api = window.anvil
@@ -13,7 +14,7 @@ interface Marker {
   top: number
 }
 
-function DiffView({ path, revision, source, onError }: { path: string; revision: number; source: 'review' | 'git'; onError: (e: unknown) => void }) {
+function DiffView({ path, revision, source, sha, onError }: { path: string; revision: number; source: 'review' | 'git' | 'commit'; sha?: string; onError: (e: unknown) => void }) {
   const host = useRef<HTMLDivElement>(null)
   const editor = useRef<monaco.editor.IStandaloneDiffEditor | null>(null)
   const hunks = useRef<Hunk[]>([])
@@ -44,9 +45,11 @@ function DiffView({ path, revision, source, onError }: { path: string; revision:
 
   useEffect(() => {
     let stale = false
-    const load = source === 'git'
-      ? api.gitDiff(path).then((d) => ({ ...d, change: null as FileChange | null }))
-      : api.getDiff(path)
+    const load = source === 'commit'
+      ? api.gitCommitDiff(sha!, path).then((d) => ({ ...d, change: null as FileChange | null }))
+      : source === 'git'
+        ? api.gitDiff(path).then((d) => ({ ...d, change: null as FileChange | null }))
+        : api.getDiff(path)
     void load.then(({ original, modified, change }) => {
       if (stale || !editor.current) return
       const instance = editor.current
@@ -68,7 +71,7 @@ function DiffView({ path, revision, source, onError }: { path: string; revision:
       place()
     }).catch(onError)
     return () => { stale = true }
-  }, [path, revision, source, onError])
+  }, [path, revision, source, sha, onError])
 
   return (
     <div className="diff-wrap">
@@ -147,13 +150,13 @@ function FileEditor({ path, revision, reveal, hidden, editorSettings, themeName,
     void store.ensure(path).then((model) => {
       if (stale) return
       setUnreadable(null)
+      current.current = path
       if (instance.getModel() !== model) {
         instance.setModel(model)
         model.updateOptions({ tabSize: editorSettings.tabSize })
         const view = store.view(path)
         if (view) instance.restoreViewState(view)
       }
-      current.current = path
       instance.focus()
     }).catch((e: Error) => {
       const message = e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
@@ -169,6 +172,53 @@ function FileEditor({ path, revision, reveal, hidden, editorSettings, themeName,
   useEffect(() => {
     void store.refresh()
   }, [revision])
+
+  // Who last changed the current line, shown at the end of it.
+  const blameLines = useRef<Map<number, BlameLine>>(new Map())
+  const blameDecorations = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
+  const showBlame = useRef(editorSettings.blame)
+  showBlame.current = editorSettings.blame
+
+  const drawBlame = useCallback(() => {
+    const instance = editor.current
+    if (!instance) return
+    blameDecorations.current ??= instance.createDecorationsCollection()
+    const position = instance.getPosition()
+    const info = position ? blameLines.current.get(position.lineNumber) : undefined
+    const file = current.current
+    const usable = showBlame.current && info && file && !store.dirty(file) && !/^0+$/.test(info.sha)
+    if (!usable || !position) return blameDecorations.current.clear()
+    const end = instance.getModel()?.getLineMaxColumn(position.lineNumber) ?? 1
+    const label = `${info.author}, ${ago(info.time)} · ${info.subject.slice(0, 70)}`
+    blameDecorations.current.set([{
+      range: new monaco.Range(position.lineNumber, end, position.lineNumber, end),
+      options: {
+        showIfCollapsed: true,
+        after: { content: `    ${label}`, inlineClassName: 'blame-text', cursorStops: monaco.editor.InjectedTextCursorStops.None },
+        hoverMessage: { value: `**${info.author}** · ${new Date(info.time * 1000).toLocaleString()}\n\n${info.subject}\n\n\`${info.sha.slice(0, 7)}\`` }
+      }
+    }])
+  }, [])
+
+  useEffect(() => {
+    blameLines.current = new Map()
+    drawBlame()
+    if (!editorSettings.blame) return
+    let stale = false
+    void api.gitBlame(path).then((lines) => {
+      if (stale) return
+      blameLines.current = new Map(lines.map((l) => [l.line, l]))
+      drawBlame()
+    }).catch(() => {}) // not in Git, or not committed yet
+    return () => { stale = true }
+  }, [path, revision, editorSettings.blame, drawBlame])
+
+  useEffect(() => {
+    const instance = editor.current
+    if (!instance) return
+    const listeners = [instance.onDidChangeCursorPosition(drawBlame), instance.onDidChangeModelContent(drawBlame), instance.onDidChangeModel(drawBlame)]
+    return () => listeners.forEach((l) => l.dispose())
+  }, [drawBlame])
 
   useEffect(() => {
     if (!reveal) return
@@ -189,15 +239,17 @@ function FileEditor({ path, revision, reveal, hidden, editorSettings, themeName,
   )
 }
 
-export function EditorPane({ path, tabs, change, revision, gitDiff, reveal, editorSettings, themeName, onCursor, onSelect, onClose, onError }: {
+export function EditorPane({ path, tabs, change, revision, gitDiff, commitSha, reveal, editorSettings, themeName, onHistory, onCursor, onSelect, onClose, onError }: {
   path: string | null
   tabs: string[]
   change: FileChange | undefined
   revision: number
   gitDiff: boolean
+  commitSha: string | null
   reveal: { line: number; at: number } | null
   editorSettings: EditorSettings
   themeName: string
+  onHistory(path: string): void
   onCursor(info: CursorInfo): void
   onSelect(path: string): void
   onClose(path: string): void
@@ -213,7 +265,7 @@ export function EditorPane({ path, tabs, change, revision, gitDiff, reveal, edit
       </div>
     )
   }
-  const showReview = !!change && !gitDiff
+  const showReview = !!change && !gitDiff && !commitSha
   return (
     <div className="editor-pane">
       <div className="tabbar">
@@ -226,7 +278,8 @@ export function EditorPane({ path, tabs, change, revision, gitDiff, reveal, edit
         ))}
       </div>
       <div className="editor-head">
-        <span className="editor-path">{path}{gitDiff && ' · compared with the last commit'}</span>
+        <span className="editor-path">{path}{commitSha ? ` · changes in ${commitSha.slice(0, 7)}` : gitDiff && ' · compared with the last commit'}</span>
+        {!showReview && <button className="link" onClick={() => onHistory(path)}>File history</button>}
         {showReview && change && (
           <span className="editor-actions">
             <span className="counts"><b className="plus">+{change.added}</b> <b className="minus">−{change.removed}</b></span>
@@ -235,9 +288,10 @@ export function EditorPane({ path, tabs, change, revision, gitDiff, reveal, edit
           </span>
         )}
       </div>
-      {gitDiff && <DiffView key={`git:${path}`} path={path} revision={revision} source="git" onError={onError} />}
-      {!gitDiff && change && <DiffView key={path} path={path} revision={revision} source="review" onError={onError} />}
-      <FileEditor path={path} revision={revision} reveal={reveal} hidden={gitDiff || !!change} editorSettings={editorSettings} themeName={themeName} onCursor={onCursor} onError={onError} />
+      {commitSha && <DiffView key={`commit:${commitSha}:${path}`} path={path} revision={revision} source="commit" sha={commitSha} onError={onError} />}
+      {!commitSha && gitDiff && <DiffView key={`git:${path}`} path={path} revision={revision} source="git" onError={onError} />}
+      {!commitSha && !gitDiff && change && <DiffView key={path} path={path} revision={revision} source="review" onError={onError} />}
+      <FileEditor path={path} revision={revision} reveal={reveal} hidden={gitDiff || !!commitSha || !!change} editorSettings={editorSettings} themeName={themeName} onCursor={onCursor} onError={onError} />
     </div>
   )
 }

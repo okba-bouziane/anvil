@@ -502,6 +502,26 @@ function handlers() {
       return { snippets: [], themes: [] }
     }
   })
+  handle('gitLog', (limit: number, rel?: string) => {
+    const p = need()
+    return git.log(p.root, limit, rel ? safePath(p.root, rel) : undefined)
+  })
+  handle('gitCommitFiles', (sha: string) => git.commitFiles(need().root, sha))
+  handle('gitCommitDiff', (sha: string, rel: string) => {
+    const p = need()
+    return git.commitDiff(p.root, sha, safePath(p.root, rel))
+  })
+  handle('gitBlame', (rel: string) => {
+    const p = need()
+    return git.blame(p.root, safePath(p.root, rel))
+  })
+  handle('gitBranches', () => git.branches(need().root))
+  handle('gitCheckout', async (name: string, create: boolean) => {
+    notBusy()
+    await git.checkout(need().root, name, create)
+    send({ type: 'tree' })
+    sendChanges()
+  })
   handle('terminalCreate', () => terminals.create(project?.root ?? ''))
   handle('terminalWrite', (id: string, data: string) => terminals.write(id, data))
   handle('terminalResize', (id: string, cols: number, rows: number) => terminals.resize(id, cols, rows))

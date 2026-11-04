@@ -364,3 +364,33 @@ button.large { padding:7px 18px; font-size:13.5px; border-radius:10px; }
 .banner.update { background:var(--accent-bg); color:var(--text); border-bottom:1px solid var(--line); cursor:default; }
 .banner.update span { cursor:pointer; }
 .row.no-model { justify-content:center; margin-top:10px; }
+
+.blame-text { color:var(--text3) !important; font-style:italic; opacity:.75; }
+.history { flex:1; min-height:0; display:flex; flex-direction:column; }
+.history-bar { display:flex; align-items:center; gap:10px; padding:6px 10px; flex:none; border-bottom:1px solid var(--line); }
+.history-bar input { width:320px; max-width:50%; background:var(--well); border:1px solid var(--line2); border-radius:7px; color:var(--text); font:12px var(--ui); padding:3px 8px; outline:none; }
+.history-bar input:focus { border-color:rgb(124 127 245 / .5); }
+.pill-file { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; color:var(--accent2); background:var(--accent-bg); border-radius:12px; padding:1px 4px 1px 9px; }
+.history-list { flex:1; overflow:auto; min-height:0; }
+.commit-row { display:flex; align-items:center; gap:10px; height:26px; padding:0 10px 0 6px; cursor:pointer; font-size:12px; }
+.commit-row:hover { background:rgb(var(--ov) / .05); }
+.commit-row.selected { background:var(--accent-bg); }
+.graph-cell { flex:none; display:block; }
+.commit-subject { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.commit-author { color:var(--text2); width:130px; flex:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.commit-time { color:var(--text3); width:100px; flex:none; font-size:11px; white-space:nowrap; }
+.commit-sha { flex:none; color:var(--text3); background:none; padding:0; }
+.ref { display:inline-block; font:10.5px var(--mono); padding:0 6px; margin-right:5px; border-radius:9px; background:var(--accent-bg); color:var(--accent2); border:1px solid rgb(124 127 245 / .35); line-height:15px; }
+.ref.remote { background:rgb(var(--ov) / .05); color:var(--text2); border-color:var(--line2); }
+.ref.tag { background:rgb(251 191 36 / .12); color:var(--amber); border-color:rgb(251 191 36 / .35); }
+.commit-files { padding:3px 10px 6px 38px; background:rgb(var(--ov) / .02); }
+.commit-file { display:flex; gap:8px; align-items:center; padding:2px 6px; font:11.5px var(--mono); color:var(--text2); border-radius:5px; cursor:pointer; }
+.commit-file:hover { background:rgb(var(--ov) / .06); color:var(--text); }
+button.more { margin:8px 12px; }
+.branch-row { display:flex; align-items:center; gap:6px; color:var(--text3); flex:none; }
+.branch-row select,.branch-row input { flex:1; min-width:0; background:var(--well); color:var(--text); border:1px solid var(--line2); border-radius:7px; padding:3px 6px; font:12px var(--ui); outline:none; }
+.history-btn { justify-content:center; font-size:12px; flex:none; }
+.editor-head .link { flex:none; margin-left:auto; }
+.editor-head .editor-actions { margin-left:0; }
+.effort { background:none; border:0; color:var(--text3); font:11.5px var(--ui); outline:none; max-width:100px; cursor:pointer; }
+.effort:hover { color:var(--text); }

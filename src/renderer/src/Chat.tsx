@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import type { AgentMode, ChatSummary, Checkpoint, Settings, Stats, UiItem } from '../../shared/types'
+import type { AgentMode, ChatSummary, Checkpoint, Effort, OpenAiEffort, Settings, Stats, UiItem } from '../../shared/types'
 import { isCloud, PROVIDER_LABEL } from '../../shared/types'
 import { Icon } from './Icon'
 import { MOD } from './keys'
@@ -293,6 +293,16 @@ export function Chat(p: ChatProps) {
             <button className="ghost model-chip" title="Change model" onClick={p.onOpenModels}>
               <Icon name={cloud ? 'cloud' : 'chip'} size={13} /><span>{modelName}</span>
             </button>
+            {settings?.provider === 'anthropic' && (
+              <select className="effort" id="effort-quick" aria-label="Effort" title="Effort: higher thinks longer and costs more" value={settings.effort} onChange={(e) => p.onSetting({ effort: e.target.value as Effort })}>
+                {(['low', 'medium', 'high', 'xhigh', 'max'] as Effort[]).map((v) => <option key={v} value={v}>{v} effort</option>)}
+              </select>
+            )}
+            {settings?.provider === 'openai' && (
+              <select className="effort" id="effort-quick" aria-label="Effort" title="Effort: for models that support it. Higher thinks longer and costs more" value={settings.openaiEffort} onChange={(e) => p.onSetting({ openaiEffort: e.target.value as OpenAiEffort })}>
+                {(['default', 'minimal', 'low', 'medium', 'high'] as OpenAiEffort[]).map((v) => <option key={v} value={v}>{v === 'default' ? 'default effort' : `${v} effort`}</option>)}
+              </select>
+            )}
             <span className="spacer" />
             {p.context.limit > 0 && <span className="meter" title={`About ${p.context.tokens.toLocaleString()} of ${p.context.limit.toLocaleString()} tokens of context used`} style={{ '--p': `${percent}%` } as React.CSSProperties} />}
             {busy

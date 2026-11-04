@@ -48,6 +48,8 @@ export interface OpenAiConfig {
   model: string
   apiKey: string | null
   strictOpenAi: boolean
+  /** How hard a reasoning model should think. Left out when unset. */
+  reasoningEffort?: string
 }
 
 /** Works with the local server, OpenAI and anything else that speaks the same API. */
@@ -57,7 +59,7 @@ export function createOpenAiClient(getConfig: () => OpenAiConfig): ModelClient {
       const config = getConfig()
       if (!config.model) throw new Error('Pick a model in Settings first.')
       const started = Date.now()
-      const response = await fetch(`${config.baseUrl}/chat/completions`, {
+      const send = (effort?: string) => fetch(`${config.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}) },
         signal: request.signal,
@@ -65,10 +67,17 @@ export function createOpenAiClient(getConfig: () => OpenAiConfig): ModelClient {
           model: config.model,
           messages: request.messages,
           ...(config.strictOpenAi ? { max_completion_tokens: request.maxTokens } : { temperature: request.temperature, max_tokens: request.maxTokens }),
+          ...(effort ? { reasoning_effort: effort } : {}),
           stream: true,
           stream_options: { include_usage: true }
         })
       })
+      let response = await send(config.reasoningEffort)
+      // Not every model can take an effort level. Those still answer, just without it.
+      if (response.status === 400 && config.reasoningEffort) {
+        const detail = await response.clone().text()
+        if (/reasoning/i.test(detail)) response = await send()
+      }
       if (response.status === 401) throw new Error('The server rejected the API key. Check it in Settings.')
       if (!response.ok || !response.body) throw new Error(`The model server answered ${response.status}: ${(await response.text()).slice(0, 300)}`)
 

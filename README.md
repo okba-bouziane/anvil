@@ -25,7 +25,9 @@ When you do use AI, Anvil is built around a small model running on your own lapt
 - Create, rename and delete files (deleted files go to the Trash)
 - Open a file (`Cmd/Ctrl+P`), then search and replace across the project (`Cmd/Ctrl+Shift+F`). Replacements can be reviewed and undone
 - Run npm scripts with one click
-- Git panel: start a repository, stage, commit, discard, compare, pull and push
+- Git panel: start a repository, stage, commit, discard, compare, pull and push, and create or switch branches
+- Commit tree: every branch as a graph, searchable, with the files and changes in each commit
+- See who changed the current line, when and why, right in the editor, and the history of any file
 
 **TypeScript and JavaScript (no AI needed)**
 - Errors underlined as you type, and a Problems panel for the whole project
@@ -40,7 +42,7 @@ When you do use AI, Anvil is built around a small model running on your own lapt
 **Models (optional)**
 - **Local on a Mac with Apple Silicon:** switch between MLX models, with a warning for models too big for your memory
 - **Local on any system:** Ollama or LM Studio
-- **Cloud:** Anthropic and OpenAI, with keys encrypted in your system's secure storage
+- **Cloud:** Anthropic and OpenAI, with keys encrypted in your system's secure storage, and an effort level you can change from the chat box
 - The app always shows whether your code stays on your computer
 - Suggestions from a local model as grey text while you type, and Tab accepts them
 

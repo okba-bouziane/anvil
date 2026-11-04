@@ -174,6 +174,8 @@ test('API keys are masked and never reach the window, and models can be switched
   await page.getByRole('button', { name: 'Close', exact: true }).click()
   await expect(page.locator('.where')).toContainText('Sends code to Anthropic')
   await expect(page.locator('.model')).toContainText('claude-opus-5-5')
+  await page.locator('#effort-quick').selectOption('max')
+  expect((await page.evaluate(() => window.anvil.getSettings())).effort).toBe('max')
   await close()
 })
 
@@ -417,6 +419,48 @@ test('everything except the agent works with no model and no API keys', async ()
   await expect(page.locator('.banner')).toHaveCount(0)
   await app.close()
   expect(errors).toEqual([])
+})
+
+test('the commit tree, file history and who changed each line', async () => {
+  const { page, root, close } = await launch([])
+  const git = (...args: string[]) => execFileSync('git', args, { cwd: root, stdio: 'pipe' })
+  git('init', '-b', 'main')
+  git('config', 'user.email', 'a@example.com')
+  git('config', 'user.name', 'Amina Test')
+  git('add', '.')
+  git('commit', '-m', 'Add the notes')
+  git('checkout', '-b', 'feature/x')
+  fs.writeFileSync(path.join(root, 'extra.txt'), 'x\n')
+  git('add', '.')
+  git('commit', '-m', 'Work on a branch')
+  git('checkout', 'main')
+  fs.appendFileSync(path.join(root, 'notes.txt'), 'more\n')
+  git('add', '.')
+  git('commit', '-m', 'Add more notes')
+
+  await openFile(page, 'notes.txt')
+  await expect(page.locator('.blame-text').first()).toContainText('Amina Test', { timeout: 15000 })
+
+  await page.getByRole('button', { name: 'File history' }).click()
+  await expect(page.locator('.commit-row')).toHaveCount(2)
+  await page.getByRole('button', { name: 'Show all commits' }).click()
+  await expect(page.locator('.commit-row')).toHaveCount(3)
+  await expect(page.locator('.ref', { hasText: 'feature/x' })).toBeVisible()
+  await expect(page.locator('.graph-cell circle')).toHaveCount(3)
+  await page.screenshot({ path: 'test-results/history.png' })
+
+  await page.locator('#history-filter').fill('branch')
+  await expect(page.locator('.commit-row')).toHaveCount(1)
+  await page.locator('.commit-row').click()
+  await page.locator('.commit-file', { hasText: 'extra.txt' }).click()
+  await expect(page.locator('.editor-path')).toContainText('changes in')
+  await expect(page.locator('.tab.active')).toContainText('extra.txt')
+
+  // Switch branch from the Git panel.
+  await page.getByRole('tab', { name: 'Git' }).click()
+  await page.locator('#branch-select').selectOption('feature/x')
+  await expect.poll(() => execFileSync('git', ['branch', '--show-current'], { cwd: root }).toString().trim()).toBe('feature/x')
+  await close()
 })
 
 test('chat and pending changes survive a restart', async () => {

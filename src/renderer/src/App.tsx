@@ -10,7 +10,7 @@ import { store } from './models'
 import { defineImportedTheme } from './monaco'
 import { SettingsModal, type SettingsTab } from './Settings'
 import { Sidebar, type SidebarTab } from './Sidebar'
-import { TerminalPanel } from './Terminal'
+import { TerminalPanel, type PanelView } from './Terminal'
 
 const api = window.anvil
 const STATUS_LABEL: Record<ModelStatus, string> = { online: 'Ready', offline: 'Off', starting: 'Starting…', nokey: 'Needs API key' }
@@ -85,7 +85,9 @@ export function App() {
   const [tab, setTab] = useState<SidebarTab>('files')
   const [gitDiff, setGitDiff] = useState(false)
   const [reveal, setReveal] = useState<{ line: number; at: number } | null>(null)
-  const [panelView, setPanelView] = useState<'terminal' | 'problems'>('terminal')
+  const [panelView, setPanelView] = useState<PanelView>('terminal')
+  const [historyFile, setHistoryFile] = useState<string | null>(null)
+  const [commitSha, setCommitSha] = useState<string | null>(null)
   const [cursor, setCursor] = useState<CursorInfo | null>(null)
   const [assets, setAssets] = useState<ImportedAssets>({ snippets: [], themes: [] })
   const [newVersion, setNewVersion] = useState<{ version: string; url: string } | null>(null)
@@ -106,12 +108,22 @@ export function App() {
   const openFile = useCallback((path: string) => {
     setSelected(path)
     setGitDiff(false)
+    setCommitSha(null)
     setReveal(null)
     setTabs((t) => (t.includes(path) ? t : [...t, path]))
   }, [])
   const openAt = (path: string, line: number) => {
     openFile(path)
     setReveal({ line, at: Date.now() })
+  }
+  const openHistory = (file: string | null) => {
+    setHistoryFile(file)
+    setPanelView('history')
+    setTerminalOpen(true)
+  }
+  const openCommitDiff = (sha: string, path: string) => {
+    openFile(path)
+    setCommitSha(sha)
   }
   const openDiff = (path: string) => {
     openFile(path)
@@ -346,10 +358,10 @@ export function App() {
         ? <Welcome recent={settings?.recentProjects ?? []} onOpen={open} onRecent={(r) => void api.openProjectPath(r).then(load).catch(onError)} />
         : (
           <main className="panes" style={{ gridTemplateColumns: showAgent ? `248px minmax(0,1fr) 5px ${chatWidth}px` : '248px minmax(0,1fr)' }}>
-            <Sidebar changes={changes} selected={selected} revision={revision} tab={tab} setTab={setTab} onOpen={openFile} onOpenAt={openAt} onDiff={openDiff} onBranch={setBranch} onRenamed={renamed} onRunScript={runScript} onBeforeReplace={store.saveAll} onError={onError} />
+            <Sidebar changes={changes} selected={selected} revision={revision} tab={tab} setTab={setTab} onOpen={openFile} onOpenAt={openAt} onDiff={openDiff} onBranch={setBranch} onRenamed={renamed} onRunScript={runScript} onBeforeReplace={store.saveAll} onHistory={() => openHistory(null)} onError={onError} />
             <div className="center">
-              <div className="center-top"><EditorPane path={selected} tabs={tabs} change={change} revision={revision} gitDiff={gitDiff} reveal={reveal} editorSettings={settings?.editor ?? DEFAULT_SETTINGS.editor} themeName={themeName} onCursor={setCursor} onSelect={(t) => { setSelected(t); setGitDiff(false) }} onClose={closeTab} onError={onError} /></div>
-              <TerminalPanel open={terminalOpen} view={panelView} setView={setPanelView} projectKey={project.root} command={terminalCommand} dark={dark} problems={problems} onOpenProblem={openAt} onRefreshProblems={refreshProblems} onCommandDone={clearCommand} onClose={() => setTerminalOpen(false)} onError={onError} />
+              <div className="center-top"><EditorPane path={selected} tabs={tabs} change={change} revision={revision} gitDiff={gitDiff} commitSha={commitSha} onHistory={openHistory} reveal={reveal} editorSettings={settings?.editor ?? DEFAULT_SETTINGS.editor} themeName={themeName} onCursor={setCursor} onSelect={(t) => { setSelected(t); setGitDiff(false); setCommitSha(null) }} onClose={closeTab} onError={onError} /></div>
+              <TerminalPanel open={terminalOpen} view={panelView} setView={setPanelView} projectKey={project.root} command={terminalCommand} dark={dark} problems={problems} revision={revision} historyFile={historyFile} onClearHistoryFile={() => setHistoryFile(null)} onOpenCommitDiff={openCommitDiff} onOpenProblem={openAt} onRefreshProblems={refreshProblems} onCommandDone={clearCommand} onClose={() => setTerminalOpen(false)} onError={onError} />
             </div>
             {showAgent && <div className="resizer" onPointerDown={() => { dragging.current = true; document.body.classList.add('resizing') }} />}
             {showAgent && <Chat

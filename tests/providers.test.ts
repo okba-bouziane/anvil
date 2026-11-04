@@ -102,6 +102,29 @@ describe('OpenAI-style servers', () => {
     expect(seen!.body.temperature).toBeUndefined()
   })
 
+  it('sends the chosen effort, and retries without it if the model refuses', async () => {
+    const seen: Seen[] = []
+    const url = await serve((req, res) => {
+      seen.push(req)
+      if (req.body.reasoning_effort) {
+        res.writeHead(400, { 'Content-Type': 'application/json' })
+        return void res.end('{"error":{"message":"Unsupported parameter: reasoning_effort"}}')
+      }
+      answer(res)
+    })
+    const out: string[] = []
+    await createOpenAiClient(() => ({ baseUrl: url, model: 'gpt-x', apiKey: 'k', strictOpenAi: true, reasoningEffort: 'high' })).stream(request(), callbacks(out))
+    expect(seen.map((s) => s.body.reasoning_effort)).toEqual(['high', undefined])
+    expect(out.join('')).toBe('ok')
+  })
+
+  it('sends no effort by default', async () => {
+    let seen: Seen | undefined
+    const url = await serve((req, res) => { seen = req; answer(res) })
+    await createOpenAiClient(() => ({ baseUrl: url, model: 'gpt-x', apiKey: 'k', strictOpenAi: true })).stream(request(), callbacks())
+    expect(seen!.body.reasoning_effort).toBeUndefined()
+  })
+
   it('local servers send no key', async () => {
     let seen: Seen | undefined
     const url = await serve((req, res) => { seen = req; answer(res) })

@@ -133,7 +133,7 @@ function Tree({ selected, revision, changed, onOpen, onRenamed, onError }: { sel
 
 export type SidebarTab = 'files' | 'search' | 'changes' | 'git' | 'scripts'
 
-export function Sidebar({ changes, selected, revision, tab, setTab, onOpen, onOpenAt, onDiff, onBranch, onRenamed, onRunScript, onBeforeReplace, onError }: {
+export function Sidebar({ changes, selected, revision, tab, setTab, onOpen, onOpenAt, onDiff, onBranch, onRenamed, onRunScript, onBeforeReplace, onHistory, onError }: {
   changes: FileChange[]
   selected: string | null
   revision: number
@@ -146,6 +146,7 @@ export function Sidebar({ changes, selected, revision, tab, setTab, onOpen, onOp
   onRenamed(from: string, to: string | null): void
   onRunScript(script: ScriptEntry): void
   onBeforeReplace(): Promise<void>
+  onHistory(): void
   onError(e: unknown): void
 }) {
   const changed = new Set(changes.map((c) => c.path))
@@ -169,7 +170,7 @@ export function Sidebar({ changes, selected, revision, tab, setTab, onOpen, onOp
       {tab === 'files' && <Tree selected={selected} revision={revision} changed={changed} onOpen={onOpen} onRenamed={onRenamed} onError={onError} />}
       {tab === 'search' && <SearchPanel onOpen={onOpenAt} onBeforeReplace={onBeforeReplace} onError={onError} />}
       {tab === 'scripts' && <ScriptsPanel revision={revision} onRun={onRunScript} onError={onError} />}
-      {tab === 'git' && <GitPanel revision={revision} onDiff={onDiff} onBranch={onBranch} onError={onError} />}
+      {tab === 'git' && <GitPanel revision={revision} onDiff={onDiff} onBranch={onBranch} onHistory={onHistory} onError={onError} />}
       {tab === 'changes' && (
         <div className="changes">
           {changes.length === 0 && <div className="pane-empty small">Nothing to review.</div>}
