@@ -301,7 +301,7 @@ export function Chat(p: ChatProps) {
                 <input type="checkbox" checked={settings.autoRunCommands} onChange={(e) => p.onSetting({ autoRunCommands: e.target.checked })} /><span className="switch" />Auto-run commands
               </label>
               <span className="spacer" />
-              <span className={cloud ? 'where cloud' : 'where'}>{cloud ? `Sends code to ${PROVIDER_LABEL[settings.provider]}` : isRemote ? 'Sends code to your server' : 'Stays on this computer'}</span>
+              <span className={cloud ? 'where cloud' : 'where'}>{cloud ? `Sends code to ${PROVIDER_LABEL[settings.provider]}` : isRemote ? 'Sends code to your server' : 'Stays local'}</span>
             </>
           )}
         </div>

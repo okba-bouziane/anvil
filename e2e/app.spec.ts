@@ -284,7 +284,7 @@ test('underlines errors, completes across files, and jumps to definitions', asyn
 
   // An error shows up without saving, and in the status bar.
   await typeAtEnd(page, 'export const bad: string = addUp(1, 2)\n')
-  await expect(page.locator('.statusbar .has-errors')).toContainText('1 errors', { timeout: 30000 })
+  await expect(page.locator('.statusbar .has-errors')).toContainText('1 error', { timeout: 30000 })
   await expect(page.locator('.squiggly-error').first()).toBeAttached()
   await page.screenshot({ path: 'test-results/errors.png' })
 

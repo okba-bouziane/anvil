@@ -241,7 +241,12 @@ export function App() {
     const media = window.matchMedia('(prefers-color-scheme: dark)')
     const onChange = (e: MediaQueryListEvent) => setSystemDark(e.matches)
     media.addEventListener('change', onChange)
-    const warnUnsaved = (e: BeforeUnloadEvent) => { if (store.anyDirty()) e.preventDefault() }
+    // With auto-save on, a last edit just gets saved. Only with it off is there anything to ask about.
+    const warnUnsaved = (e: BeforeUnloadEvent) => {
+      if (!store.anyDirty()) return
+      if (settingsRef.current?.editor.autoSave) void store.saveAll()
+      else e.preventDefault()
+    }
     window.addEventListener('beforeunload', warnUnsaved)
     return () => {
       media.removeEventListener('change', onChange)
@@ -357,7 +362,7 @@ export function App() {
         )}
       {project && (
         <footer className="statusbar">
-          <button className={errorCount ? 'has-errors' : warningCount ? 'has-warnings' : ''} aria-label="Problems" title="Open Problems" onClick={openProblems}><Icon name="bug" size={12} />{errorCount} errors, {warningCount} warnings</button>
+          <button className={errorCount ? 'has-errors' : warningCount ? 'has-warnings' : ''} aria-label="Problems" title="Open Problems" onClick={openProblems}><Icon name="bug" size={12} />{errorCount} error{errorCount === 1 ? '' : 's'}, {warningCount} warning{warningCount === 1 ? '' : 's'}</button>
           <span className="spacer" />
           {cursor && selected && <span>Ln {cursor.line}, Col {cursor.column}</span>}
           {cursor && selected && <span>{cursor.language}</span>}
