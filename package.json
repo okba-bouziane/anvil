@@ -1,0 +1,65 @@
+{
+  "name": "anvil",
+  "productName": "Anvil",
+  "version": "0.1.0",
+  "description": "Desktop coding assistant for local models",
+  "private": true,
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "npm run build && playwright test",
+    "dist": "npm run build && electron-builder --mac dir && codesign --force --deep --sign - dist/mac-arm64/Anvil.app",
+    "postinstall": "node scripts/postinstall.cjs"
+  },
+  "build": {
+    "appId": "dev.okba.anvil",
+    "files": [
+      "out/**",
+      "package.json"
+    ],
+    "mac": {
+      "target": "dir",
+      "category": "public.app-category.developer-tools",
+      "identity": null
+    },
+    "directories": {
+      "output": "dist"
+    },
+    "asarUnpack": [
+      "node_modules/node-pty/**"
+    ]
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.4.0",
+    "diff": "^9.0.0",
+    "node-pty": "^1.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^22.20.5",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "monaco-editor": "^0.52.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21",
+    "vitest": "^2.1.9"
+  },
+  "license": "MIT",
+  "author": "Okba Bouziane",
+  "homepage": "https://github.com/okba-bouziane/anvil",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/okba-bouziane/anvil.git"
+  }
+}
