@@ -44,6 +44,7 @@ console.log('changed files:', await page.locator('.change-row').allInnerTexts())
 console.log('invoice.ts has total:', fs.readFileSync(path.join(root, 'src/invoice.ts'), 'utf8').includes('total'))
 console.log('discount.ts exists:', fs.existsSync(path.join(root, 'src/discount.ts')))
 
+console.log('code intelligence:', JSON.stringify(await page.evaluate(() => window.anvil.intel('hover', 'src/invoice.ts', 1, 11))))
 await page.keyboard.press('Meta+j')
 await page.waitForSelector('.xterm')
 await page.waitForTimeout(1200)

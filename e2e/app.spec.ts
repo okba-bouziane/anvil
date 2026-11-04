@@ -307,7 +307,6 @@ test('edits survive switching tabs, auto-save writes them, and the setting turns
   const { page, root, close } = await launchCode()
   await page.getByRole('button', { name: 'Settings' }).click()
   await page.locator('.modal-nav button', { hasText: 'Editor' }).click()
-  await page.getByLabel('Auto-save').check({ force: true })
   await page.getByLabel('Auto-save').uncheck({ force: true })
   await page.getByRole('button', { name: 'Close', exact: true }).click()
 

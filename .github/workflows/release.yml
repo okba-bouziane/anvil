@@ -31,7 +31,7 @@ jobs:
       - run: npm run ${{ matrix.script }}
       - name: Zip the Mac app
         if: runner.os == 'macOS'
-        run: ditto -c -k --keepParent dist/mac-arm64/Anvil.app "dist/Anvil-${GITHUB_REF_NAME#v}-mac-arm64.zip"
+        run: ditto -c -k --keepParent dist/mac-arm64/Anvil.app dist/Anvil-mac-arm64.zip
       - uses: softprops/action-gh-release@v2
         with:
           draft: true

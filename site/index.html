@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anvil, the code editor that works with the Wi-Fi off</title>
+<meta name="description" content="A free, open source code editor. Use it with no AI, with a model on your own computer, or with your own API key. For Mac, Windows and Linux.">
+<meta property="og:title" content="Anvil, the code editor that works with the Wi-Fi off">
+<meta property="og:description" content="A free, open source code editor. Use it with no AI, with a model on your own computer, or with your own API key.">
+<meta property="og:image" content="/img/review.png">
+<meta name="theme-color" content="#0a0a0c">
+<link rel="icon" href="/img/icon.png">
+<link rel="preload" href="/fonts/display.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+/* Forged metal: graphite with a faint violet bias, hairlines, and one indigo accent kept for action.
+   The bold move is the type: a tall industrial display face set huge, like lettering stamped into steel. */
+@font-face { font-family:'Display'; src:url('/fonts/display.woff2') format('woff2'); font-weight:100 900; font-display:swap; }
+@font-face { font-family:'Body'; src:url('/fonts/body.woff2') format('woff2'); font-weight:400 700; font-display:swap; }
+@font-face { font-family:'Mono'; src:url('/fonts/mono.woff2') format('woff2'); font-weight:100 800; font-display:swap; }
+:root {
+  --bg:#0a0a0c; --steel:#121216; --steel2:#1a1a20; --line:#ffffff14; --line2:#ffffff26;
+  --text:#f0f0f3; --text2:#a9a9b5; --text3:#74747f;
+  --accent:#7c7ff5; --accent2:#a9abff; --green:#4ade80; --red:#fb7185;
+  --display:'Display','Arial Narrow',Impact,sans-serif; --body:'Body',-apple-system,'Segoe UI',sans-serif; --mono:'Mono',ui-monospace,Menlo,Consolas,monospace;
+  --gutter:clamp(20px,4.5vw,64px);
+  color-scheme:dark;
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--bg); color:var(--text); font:17px/1.6 var(--body); -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+a { color:inherit; }
+img { max-width:100%; display:block; }
+h1,h2,h3,p { margin:0; }
+:focus-visible { outline:2px solid var(--accent2); outline-offset:3px; border-radius:4px; }
+.wrap { max-width:1320px; margin:0 auto; padding:0 var(--gutter); }
+
+header.top { position:sticky; top:0; z-index:10; background:#0a0a0cd9; backdrop-filter:blur(14px); border-bottom:1px solid var(--line); }
+.top .wrap { display:flex; align-items:center; gap:22px; height:60px; }
+.brand { display:flex; align-items:center; gap:10px; font:800 25px/1 var(--display); letter-spacing:.05em; text-transform:uppercase; text-decoration:none; }
+.mark { width:20px; height:20px; background:linear-gradient(145deg,#d3d5ff,#6e71ee 70%); clip-path:polygon(0 18%,100% 18%,100% 38%,70% 54%,70% 72%,88% 100%,12% 100%,30% 72%,30% 54%,0 38%); }
+.top nav { display:flex; gap:22px; margin-left:auto; align-items:center; font-size:15px; }
+.top nav a { color:var(--text2); text-decoration:none; transition:color .15s; }
+.top nav a:hover { color:var(--text); }
+.top nav .small-hide { display:inline; }
+
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:9px; padding:13px 22px; border-radius:10px; font:600 16px/1.2 var(--body); text-decoration:none; border:1px solid var(--line2); background:var(--steel2); color:var(--text); cursor:pointer; transition:background .15s,border-color .15s,transform .1s; }
+.btn:hover { background:#24242c; border-color:#ffffff40; }
+.btn:active { transform:translateY(1px); }
+.btn.primary { background:linear-gradient(180deg,#8f92f9,#6c6fec); border-color:#ffffff33; color:#fff; box-shadow:0 1px 0 #ffffff40 inset,0 10px 34px -12px #6c6fec; }
+.btn.primary:hover { background:linear-gradient(180deg,#9d9ffa,#7a7df2); }
+.top .btn { padding:8px 14px; font-size:14px; }
+
+.hero { padding:clamp(44px,7vw,92px) 0 0; }
+h1 { font:900 clamp(66px,14.6vw,226px)/.84 var(--display); letter-spacing:-.005em; text-transform:uppercase; background:linear-gradient(178deg,#fff 30%,#9c9cab 100%); -webkit-background-clip:text; background-clip:text; color:transparent; padding-bottom:.06em; }
+h1 span { display:block; }
+h1 .off { color:var(--accent2); -webkit-text-fill-color:var(--accent2); }
+.lead { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:28px 56px; align-items:end; margin-top:clamp(26px,3.6vw,44px); }
+.lead p { font-size:clamp(19px,1.9vw,24px); line-height:1.42; max-width:30em; color:var(--text2); }
+.lead p b { color:var(--text); font-weight:600; }
+.cta { display:flex; flex-wrap:wrap; gap:12px; }
+.meta { margin-top:13px; color:var(--text3); font-size:14px; }
+@media (prefers-reduced-motion:no-preference) {
+  h1 span { animation:rise .8s cubic-bezier(.2,.7,.2,1) both; }
+  h1 span:nth-child(2) { animation-delay:.09s; }
+  h1 span:nth-child(3) { animation-delay:.18s; }
+  @keyframes rise { from { opacity:0; transform:translateY(22px); } }
+}
+
+/* The demo: a replay of a real run */
+.demo-wrap { margin-top:clamp(40px,5.5vw,72px); }
+.demo { background:var(--steel); border:1px solid var(--line2); border-radius:16px; overflow:hidden; box-shadow:0 60px 140px -50px #5558d966,0 30px 70px -30px #000; }
+.demo-bar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:11px 16px; border-bottom:1px solid var(--line); font-size:14px; color:var(--text2); }
+.dots { display:flex; gap:7px; }
+.dots i { width:11px; height:11px; border-radius:50%; background:#2b2b33; display:block; }
+.demo-file { font:13px var(--mono); color:var(--text3); }
+.wifi { margin-left:auto; display:flex; align-items:center; gap:9px; background:none; border:0; color:var(--text); font:500 14px var(--body); cursor:pointer; padding:3px; }
+.switch { width:36px; height:20px; border-radius:11px; background:var(--accent); position:relative; transition:background .2s; flex:none; }
+.switch::after { content:''; position:absolute; top:2px; left:18px; width:16px; height:16px; border-radius:50%; background:#fff; transition:left .2s; }
+.wifi[aria-checked="true"] .switch { background:#3a3a44; }
+.wifi[aria-checked="true"] .switch::after { left:2px; }
+.demo-body { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr); min-height:420px; }
+.code { font:clamp(12.5px,1.15vw,14.5px)/1.75 var(--mono); padding:16px 0; overflow:hidden; min-width:0; }
+.ln { display:flex; padding-right:16px; white-space:pre; position:relative; min-height:1.75em; }
+.ln::before { content:attr(data-n); width:44px; flex:none; text-align:right; padding-right:16px; color:#47474f; }
+.ln.add { background:#22c55e17; }
+.ln.add::before { color:#4ade8099; }
+.k { color:#c4a7ff; } .t { color:#7fd4e8; } .f { color:#a9abff; } .s { color:#9ee3a9; }
+.cursor { display:inline-block; width:8px; height:1.15em; margin-bottom:-.22em; background:var(--accent2); animation:blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity:0; } }
+.hunk { position:absolute; right:14px; top:-3px; display:flex; gap:3px; padding:3px; background:#1d1d24f2; border:1px solid var(--line2); border-radius:8px; font-family:var(--body); z-index:2; }
+.hunk button { background:none; border:0; font:600 12.5px var(--body); padding:2px 10px; border-radius:5px; cursor:pointer; }
+.hunk button:hover { background:#ffffff14; }
+.hunk .keep { color:var(--green); } .hunk .undo { color:var(--red); }
+.side { border-left:1px solid var(--line); padding:16px; display:flex; flex-direction:column; gap:10px; font-size:14px; min-width:0; }
+.ask { align-self:flex-end; background:var(--steel2); border:1px solid var(--line); border-radius:12px 12px 3px 12px; padding:8px 12px; max-width:92%; }
+.step { display:flex; gap:9px; align-items:center; border:1px solid var(--line); border-radius:9px; padding:6px 10px; font:12.5px var(--mono); color:var(--text2); }
+.step b { font:600 13px var(--body); color:var(--text); }
+.step i { width:7px; height:7px; border-radius:50%; background:var(--green); flex:none; }
+.step.ok { color:#86efac; background:#4ade800f; border-color:transparent; }
+.status { margin-top:auto; color:var(--text3); font:12.5px var(--mono); line-height:1.6; }
+.status b { color:var(--accent2); font-weight:600; }
+.where { color:var(--text); }
+.caption { margin-top:12px; color:var(--text3); font-size:14px; }
+
+section { padding:clamp(80px,11vw,150px) 0 0; }
+h2 { font:800 clamp(46px,7.2vw,104px)/.92 var(--display); text-transform:uppercase; letter-spacing:0; text-wrap:balance; }
+.intro { max-width:37em; margin-top:18px; font-size:clamp(18px,1.6vw,21px); color:var(--text2); line-height:1.5; }
+
+.ways { display:grid; grid-template-columns:repeat(3,1fr); margin-top:clamp(32px,4vw,52px); border-top:1px solid var(--line2); }
+.way { padding:26px clamp(18px,2.4vw,34px) 8px 0; }
+.way + .way { border-left:1px solid var(--line); padding-left:clamp(18px,2.4vw,34px); }
+.way h3 { font:800 clamp(30px,3vw,42px)/1 var(--display); text-transform:uppercase; }
+.way small { display:block; margin-top:7px; color:var(--accent2); font-size:14px; font-weight:600; }
+.way ul { list-style:none; margin:16px 0 0; padding:0; color:var(--text2); font-size:16px; line-height:1.5; }
+.way li { padding:7px 0; border-top:1px solid var(--line); }
+
+.review { display:grid; grid-template-columns:minmax(0,5fr) minmax(0,7fr); gap:clamp(28px,4.5vw,70px); align-items:start; margin-top:clamp(32px,4vw,52px); }
+.points { display:flex; flex-direction:column; }
+.point { padding:18px 0; border-top:1px solid var(--line2); }
+.point h3 { font:600 18px/1.3 var(--body); }
+.point p { color:var(--text2); font-size:16px; margin-top:5px; line-height:1.5; }
+.shot { border-radius:12px; border:1px solid var(--line2); box-shadow:0 40px 100px -40px #000; }
+figure { margin:0; }
+figcaption { color:var(--text3); font-size:14px; margin-top:10px; }
+
+.numbers { display:grid; grid-template-columns:repeat(4,1fr); margin-top:clamp(32px,4vw,52px); border-top:1px solid var(--line2); }
+.num { padding:22px 18px 0 0; }
+.num + .num { padding-left:18px; border-left:1px solid var(--line); }
+.num b { display:block; font:800 clamp(50px,6.6vw,96px)/.95 var(--display); font-variant-numeric:tabular-nums; }
+.num b em { font:600 .32em var(--body); color:var(--text3); margin-left:5px; }
+.num span { display:block; margin-top:8px; color:var(--text2); font-size:15.5px; line-height:1.4; }
+.story { margin-top:clamp(28px,3vw,40px); max-width:44em; color:var(--text2); }
+.story b { color:var(--text); font-weight:600; }
+
+.lists { display:grid; grid-template-columns:repeat(4,1fr); gap:30px clamp(20px,3vw,44px); margin-top:clamp(32px,4vw,52px); }
+.lists h3 { font:600 15px var(--body); color:var(--accent2); padding-bottom:9px; border-bottom:1px solid var(--line2); }
+.lists ul { list-style:none; padding:0; margin:10px 0 0; color:var(--text2); font-size:15.5px; line-height:1.45; }
+.lists li { padding:5px 0; }
+
+.limits { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 clamp(28px,4vw,64px); margin-top:clamp(28px,3.5vw,44px); }
+.limit { padding:15px 0; border-top:1px solid var(--line); }
+.limit b { font-weight:600; }
+.limit span { color:var(--text2); }
+
+.download { padding-bottom:clamp(70px,9vw,120px); }
+.oses { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:clamp(28px,3.5vw,44px); }
+.os { background:var(--steel); border:1px solid var(--line2); border-radius:14px; padding:22px; display:flex; flex-direction:column; gap:13px; transition:border-color .2s; }
+.os.yours { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+.os h3 { font:800 32px/1 var(--display); text-transform:uppercase; }
+.os p { color:var(--text2); font-size:15px; line-height:1.45; flex:1; }
+.os .btn { width:100%; }
+.os .alt { font-size:14px; color:var(--text3); }
+.os .alt a { color:var(--text2); }
+pre.cmd { margin:0; font:12.5px/1.5 var(--mono); background:var(--bg); border:1px solid var(--line); border-radius:7px; padding:8px 10px; white-space:pre-wrap; word-break:break-all; color:var(--text2); }
+.warn { margin-top:18px; color:var(--text3); font-size:15px; max-width:52em; }
+
+footer { border-top:1px solid var(--line); padding:26px 0 40px; color:var(--text3); font-size:14.5px; }
+footer .wrap { display:flex; flex-wrap:wrap; gap:10px 24px; align-items:center; }
+footer a { color:var(--text2); }
+footer .right { margin-left:auto; }
+
+@media (max-width:980px) {
+  .demo-body { grid-template-columns:1fr; }
+  .side { border-left:0; border-top:1px solid var(--line); }
+  .review { grid-template-columns:1fr; }
+  .lists { grid-template-columns:repeat(2,1fr); }
+  .numbers { grid-template-columns:repeat(2,1fr); gap:22px 0; }
+  .num:nth-child(3) { border-left:0; padding-left:0; }
+}
+@media (max-width:720px) {
+  body { font-size:16px; }
+  .lead { grid-template-columns:1fr; }
+  .ways,.oses,.limits { grid-template-columns:1fr; }
+  .way + .way { border-left:0; padding-left:0; }
+  .top nav .small-hide { display:none; }
+  .wifi { margin-left:0; width:100%; justify-content:space-between; }
+  .ln::before { width:30px; padding-right:9px; }
+  .code { overflow-x:auto; }
+}
+@media (max-width:440px) {
+  .lists { grid-template-columns:1fr; }
+  .numbers { grid-template-columns:1fr; }
+  .num + .num { border-left:0; padding-left:0; }
+  .cta .btn { width:100%; }
+}
+@media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } * { animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Anvil home"><span class="mark"></span>Anvil</a>
+    <nav aria-label="Main">
+      <a class="small-hide" href="#ways">Ways to use it</a>
+      <a class="small-hide" href="#limits">Limits</a>
+      <a href="https://github.com/okba-bouziane/anvil">GitHub</a>
+      <a class="btn" href="#download">Download</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+<div class="hero">
+  <div class="wrap">
+    <h1><span>The editor</span><span>that works with</span><span class="off">the Wi-Fi off</span></h1>
+    <div class="lead">
+      <p><b>A free, open source code editor.</b> Use it with no AI at all, with a model running on your own computer, or with your own API key. Your choice, and you can change it any time.</p>
+      <div>
+        <div class="cta">
+          <a class="btn primary" id="hero-download" href="#download">Download Anvil</a>
+          <a class="btn" href="https://github.com/okba-bouziane/anvil">View the code</a>
+        </div>
+        <div class="meta">Version 0.2.0 · MIT license · Mac, Windows, Linux</div>
+      </div>
+    </div>
+
+    <div class="demo-wrap">
+      <div class="demo">
+        <div class="demo-bar">
+          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="demo-file">src/invoice.ts</span>
+          <button class="wifi" id="wifi" role="switch" aria-checked="false"><span id="wifi-label">Wi-Fi on</span><span class="switch"></span></button>
+        </div>
+        <div class="demo-body">
+          <div class="code" id="code" aria-label="Code being written by a local model"></div>
+          <div class="side">
+            <div class="ask">Add a total function that adds tax and rounds to cents.</div>
+            <div id="steps" style="display:contents"></div>
+            <div class="status" id="status"></div>
+          </div>
+        </div>
+      </div>
+      <p class="caption">A replay of a real run, with a 6 GB local model on a 16 GB MacBook. Turn the Wi-Fi off, then press <b>Keep</b> or <b>Undo</b>.</p>
+    </div>
+  </div>
+</div>
+
+<section id="ways">
+  <div class="wrap">
+    <h2>An editor first. AI only if you want it.</h2>
+    <p class="intro">Install it and start coding, with no account, no model and no key. Press one shortcut and the agent is gone.</p>
+    <div class="ways">
+      <div class="way">
+        <h3>No AI</h3><small>Nothing to set up</small>
+        <ul>
+          <li>Errors underlined as you type</li>
+          <li>Completion, go to definition and rename across files</li>
+          <li>Terminal, Git, project search and replace</li>
+        </ul>
+      </div>
+      <div class="way">
+        <h3>On your computer</h3><small>Your code stays with you</small>
+        <ul>
+          <li>MLX on Macs with Apple Silicon</li>
+          <li>Ollama or LM Studio on any system</li>
+          <li>Works on a plane, in a basement, or at a client who bans the cloud</li>
+        </ul>
+      </div>
+      <div class="way">
+        <h3>Your API key</h3><small>For the bigger jobs</small>
+        <ul>
+          <li>Anthropic, OpenAI or any OpenAI-style server</li>
+          <li>Keys stay in your system's secure storage</li>
+          <li>The app always says when code leaves your computer</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Built for models that make mistakes</h2>
+    <p class="intro">A small model on a laptop gets things wrong. Anvil assumes that, and makes every mistake cheap.</p>
+    <div class="review">
+      <div class="points">
+        <div class="point"><h3>Keep or undo every block</h3><p>Each edit lands as a diff. Accept the good parts of a change and throw out the rest.</p></div>
+        <div class="point"><h3>Undo a whole step</h3><p>One click puts back every file the model touched, even the changes you already kept.</p></div>
+        <div class="point"><h3>TypeScript checks its work</h3><p>Anvil adds missing imports itself, then sends the other errors back to the model to fix.</p></div>
+        <div class="point"><h3>It stops when it's stuck</h3><p>A model repeating itself gets stopped and told why, so it can't loop forever.</p></div>
+        <div class="point"><h3>Commands ask first</h3><p>Nothing runs in your shell until you approve it, unless you choose otherwise.</p></div>
+      </div>
+      <figure>
+        <img class="shot" src="/img/review.png" width="1800" height="1095" loading="lazy" alt="Anvil showing a change with Keep and Undo buttons, and the chat listing a TypeScript error the model then fixed">
+        <figcaption>A real run. The model made a TypeScript error, Anvil caught it, and the model fixed it.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Measured, not promised</h2>
+    <p class="intro">One real task on one machine: a MacBook with an M1 Pro and 16 GB of memory, a 6 GB model, Anvil's window open.</p>
+    <div class="numbers">
+      <div class="num"><b>24<em>tokens/s</em></b><span>Typical writing speed</span></div>
+      <div class="num"><b>3<em>seconds</em></b><span>Typical wait for an answer</span></div>
+      <div class="num"><b>10<em>minutes</em></b><span>To finish the whole task</span></div>
+      <div class="num"><b>17<em>of 17</em></b><span>Backend tests passing at the end</span></div>
+    </div>
+    <p class="story"><b>The task:</b> add a task priority field across an existing NestJS and Angular project, with no file list or plan. The model changed 11 files and wrote 3 of those tests. The backend passed its type check and the frontend built, though we didn't try the feature in a browser, and earlier versions of this test failed. A small local model is good for single files, small features and tests while you review the work. For a whole project, use a bigger model through an API key.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>What's in the box</h2>
+    <div class="lists">
+      <div><h3>Editing</h3><ul><li>Tabs, and edits that survive switching</li><li>Auto-save and format on save</li><li>Light, dark and system themes</li><li>Create, rename, delete, open by name</li></ul></div>
+      <div><h3>TypeScript and JavaScript</h3><ul><li>Live errors and a Problems panel</li><li>Completion with automatic imports</li><li>Hover, definitions, references</li><li>Rename across files</li></ul></div>
+      <div><h3>Project tools</h3><ul><li>Built-in terminal with tabs</li><li>Git: stage, commit, compare, pull, push</li><li>Search and replace across the project</li><li>Run npm scripts with one click</li></ul></div>
+      <div><h3>Agent</h3><ul><li>Agent, Plan and Ask modes</li><li>Code appears as it's written</li><li>Grey suggestions from a local model</li><li>Settings, snippets and themes from VS Code</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section id="limits">
+  <div class="wrap">
+    <h2>What it can't do yet</h2>
+    <p class="intro">Anvil is young, and VS Code is far more complete. Better you read this here than find out later.</p>
+    <div class="limits">
+      <div class="limit"><b>VS Code extensions don't run.</b> <span>You can import settings, snippets and color themes, but not extensions like ESLint.</span></div>
+      <div class="limit"><b>No debugger yet.</b> <span>Debug in the terminal or another tool for now.</span></div>
+      <div class="limit"><b>Code help is TypeScript and JavaScript only.</b> <span>Other languages get syntax colors.</span></div>
+      <div class="limit"><b>Windows and Linux are new.</b> <span>So far they've passed automated tests only, so please report problems.</span></div>
+      <div class="limit"><b>Cloud providers are lightly tested.</b> <span>The Anthropic and OpenAI connections haven't been tried with real keys yet.</span></div>
+      <div class="limit"><b>Approved commands run as you.</b> <span>They can change anything your user can, and can't be undone from Anvil.</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="download" class="download">
+  <div class="wrap">
+    <h2>Get Anvil</h2>
+    <div class="oses">
+      <div class="os" data-os="mac">
+        <h3>Mac</h3>
+        <p>For Apple Silicon. Apple hasn't notarized it yet, so run this once after moving it to Applications:</p>
+        <pre class="cmd">xattr -cr /Applications/Anvil.app</pre>
+        <a class="btn primary" href="https://github.com/okba-bouziane/anvil/releases/latest/download/Anvil-mac-arm64.zip">Download for Mac</a>
+      </div>
+      <div class="os" data-os="windows">
+        <h3>Windows</h3>
+        <p>For 64-bit Windows. The installer isn't signed yet, so SmartScreen may warn you the first time.</p>
+        <a class="btn primary" href="https://github.com/okba-bouziane/anvil/releases/latest/download/Anvil-win-x64.exe">Download for Windows</a>
+      </div>
+      <div class="os" data-os="linux">
+        <h3>Linux</h3>
+        <p>For 64-bit Linux, as an AppImage that runs without installing.</p>
+        <a class="btn primary" href="https://github.com/okba-bouziane/anvil/releases/latest/download/Anvil-linux-x86_64.AppImage">Download AppImage</a>
+        <span class="alt">Or get the <a href="https://github.com/okba-bouziane/anvil/releases/latest/download/Anvil-linux-amd64.deb">.deb package</a></span>
+      </div>
+    </div>
+    <p class="warn">Everything is on <a href="https://github.com/okba-bouziane/anvil/releases/latest">the releases page</a>, and you can <a href="https://github.com/okba-bouziane/anvil#or-build-it-yourself">build it from source</a>. A local model needs about 6 GB of disk and works best with 16 GB of memory.</p>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Anvil is open source under the MIT license.</span>
+    <a href="https://github.com/okba-bouziane/anvil">GitHub</a>
+    <a href="https://github.com/okba-bouziane/anvil/issues">Report a problem</a>
+    <span class="right">Made by <a href="https://devokba.vercel.app">Okba Bouziane</a></span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+  const color = (s) => esc(s)
+    .replace(/\b(import|from|export|function|const|return|interface)\b/g, '<span class="k">$1</span>')
+    .replace(/\b(number|Line)\b/g, '<span class="t">$1</span>')
+    .replace(/\b(roundCents|subtotal|total)(?=\()/g, '<span class="f">$1</span>')
+    .replace(/('[^']*')/g, '<span class="s">$1</span>')
+  const base = [
+    "import { roundCents } from './money.js'",
+    '',
+    'export function subtotal(lines: Line[]): number {',
+    '  return roundCents(lines.reduce((sum, line) => sum + line.price * line.quantity, 0))',
+    '}'
+  ]
+  const added = [
+    '',
+    'export function total(lines: Line[], taxRate: number): number {',
+    '  const sub = subtotal(lines)',
+    '  const tax = roundCents(sub * taxRate)',
+    '  return roundCents(sub + tax)',
+    '}'
+  ]
+  const code = document.getElementById('code')
+  const steps = document.getElementById('steps')
+  const statusBox = document.getElementById('status')
+  const wifi = document.getElementById('wifi')
+  const wifiLabel = document.getElementById('wifi-label')
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
+  let timer = null
+  let offline = false
+  let state = 'writing'
+
+  function drawStatus(speed) {
+    const where = offline ? 'Wi-Fi off. Still working.' : 'Runs on this computer.'
+    statusBox.innerHTML = (speed ? 'Writing <b>' + speed + '</b> tokens/s<br>' : '') + '<span class="where">' + where + '</span>'
+  }
+
+  function draw(lines, showHunk, cursor) {
+    code.innerHTML = ''
+    const all = state === 'undone' ? base : base.concat(lines)
+    all.forEach((text, i) => {
+      const row = document.createElement('div')
+      const isNew = i >= base.length && state !== 'kept'
+      row.className = 'ln' + (isNew ? ' add' : '')
+      row.dataset.n = String(i + 1)
+      const body = document.createElement('span')
+      body.innerHTML = color(text)
+      row.appendChild(body)
+      if (cursor && i === all.length - 1) {
+        const c = document.createElement('span')
+        c.className = 'cursor'
+        row.appendChild(c)
+      }
+      if (showHunk && i === base.length) {
+        const hunk = document.createElement('div')
+        hunk.className = 'hunk'
+        hunk.innerHTML = '<button class="keep" type="button">Keep</button><button class="undo" type="button">Undo</button>'
+        hunk.querySelector('.keep').onclick = () => finish('kept')
+        hunk.querySelector('.undo').onclick = () => finish('undone')
+        row.appendChild(hunk)
+      }
+      code.appendChild(row)
+    })
+  }
+
+  function setSteps(html) { steps.innerHTML = html }
+  const toolEdit = '<div class="step"><i></i><b>Read</b> src/invoice.ts</div><div class="step"><i></i><b>Edit</b> src/invoice.ts</div>'
+  const checked = '<div class="step ok">TypeScript found no errors.</div>'
+
+  function finish(result) {
+    state = result
+    draw(added, false, false)
+    setSteps(toolEdit + checked + '<div class="ask" style="align-self:flex-start;background:none;border:0;padding:0;color:var(--text2)">' + (result === 'kept' ? 'Kept. The change is in your file.' : 'Undone. The file is back as it was.') + ' <button type="button" id="again" style="background:none;border:0;color:var(--accent2);font:inherit;cursor:pointer;padding:0;text-decoration:underline">Play again</button></div>')
+    document.getElementById('again').onclick = play
+    drawStatus('')
+  }
+
+  function play() {
+    clearTimeout(timer)
+    state = 'writing'
+    setSteps('<div class="step"><i></i><b>Read</b> src/invoice.ts</div>')
+    if (reduce) {
+      setSteps(toolEdit + checked)
+      draw(added, true, false)
+      drawStatus('')
+      return
+    }
+    let line = 0
+    let col = 0
+    const shown = []
+    const tick = () => {
+      if (line >= added.length) {
+        setSteps(toolEdit + checked)
+        draw(shown, true, false)
+        drawStatus('')
+        return
+      }
+      const target = added[line]
+      col = Math.min(target.length, col + 3)
+      shown[line] = target.slice(0, col)
+      draw(shown, false, true)
+      drawStatus('24.5')
+      if (col >= target.length) {
+        line++
+        col = 0
+      }
+      timer = setTimeout(tick, 42)
+    }
+    setSteps(toolEdit)
+    timer = setTimeout(tick, 650)
+  }
+
+  wifi.onclick = () => {
+    offline = !offline
+    wifi.setAttribute('aria-checked', String(offline))
+    wifiLabel.textContent = offline ? 'Wi-Fi off' : 'Wi-Fi on'
+    drawStatus(state === 'writing' && timer && code.querySelector('.cursor') ? '24.5' : '')
+  }
+
+  draw([], false, false)
+  drawStatus('')
+  const start = () => play()
+  if ('IntersectionObserver' in window) {
+    const seen = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        seen.disconnect()
+        start()
+      }
+    }, { threshold: 0.25 })
+    seen.observe(code)
+  } else start()
+
+  // Point the first button at the right download.
+  const ua = navigator.userAgent
+  const os = /Windows/.test(ua) ? 'windows' : /Linux|X11/.test(ua) && !/Android/.test(ua) ? 'linux' : /Macintosh/.test(ua) ? 'mac' : null
+  if (os) {
+    const card = document.querySelector('.os[data-os="' + os + '"]')
+    card.classList.add('yours')
+    const names = { mac: 'Mac', windows: 'Windows', linux: 'Linux' }
+    const hero = document.getElementById('hero-download')
+    hero.textContent = 'Download for ' + names[os]
+    if (os !== 'mac') hero.href = card.querySelector('.btn').href
+  }
+})()
+</script>
+</body>
+</html>

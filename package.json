@@ -52,7 +52,7 @@
       "icon": "build/icon.png",
       "maintainer": "Okba Bouziane"
     },
-    "artifactName": "Anvil-${version}-${os}-${arch}.${ext}"
+    "artifactName": "Anvil-${os}-${arch}.${ext}"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

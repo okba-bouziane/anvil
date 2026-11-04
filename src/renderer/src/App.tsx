@@ -300,7 +300,11 @@ export function App() {
   }, [])
 
   const clearCommand = useCallback(() => setTerminalCommand(null), [])
-  const update = (patch: Partial<Settings>) => void api.setSettings(patch).then((s) => { setSettings(s); poll() }).catch(onError)
+  // Shown straight away, so switches and number boxes respond without waiting for the save.
+  const update = (patch: Partial<Settings>) => {
+    setSettings((s) => (s ? { ...s, ...patch } : s))
+    void api.setSettings(patch).then(poll).catch(onError)
+  }
   const open = () => void api.openProject().then(load).catch(onError)
   const change = changes.find((c) => c.path === selected)
   const provider = settings?.provider ?? 'local'
