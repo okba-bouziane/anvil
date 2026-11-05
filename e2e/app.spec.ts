@@ -55,7 +55,7 @@ const ask = async (page: Page, text: string) => {
 
 test('reviews edits block by block, then undoes the whole step', async () => {
   const edit = (n: number, to: string) => `<edit_file path="notes.txt"><old>line ${n}\nline ${n + 1}</old><new>${to}\nline ${n + 1}</new></edit_file>`
-  const { page, root, close } = await launch([edit(3, 'THREE'), edit(25, 'TWENTY-FIVE'), '<write_file path="src/new.ts">export const a = 1</write_file>', 'All done.'])
+  const { page, root, close } = await launch([edit(3, 'THREE'), edit(15, 'FIFTEEN'), '<write_file path="src/new.ts">export const a = 1</write_file>', 'All done.'])
   const notes = path.join(root, 'notes.txt')
 
   await ask(page, 'change the notes')
@@ -73,7 +73,7 @@ test('reviews edits block by block, then undoes the whole step', async () => {
   await page.locator('.hunk-actions .undo').first().click()
   await expect(page.locator('.hunk-actions')).toHaveCount(1)
   expect(fs.readFileSync(notes, 'utf8')).toContain('line 3\n')
-  expect(fs.readFileSync(notes, 'utf8')).toContain('TWENTY-FIVE')
+  expect(fs.readFileSync(notes, 'utf8')).toContain('FIFTEEN')
   await page.locator('.hunk-actions .keep').first().click()
   await expect(page.locator('.change-row')).toHaveCount(1)
 
@@ -86,7 +86,7 @@ test('reviews edits block by block, then undoes the whole step', async () => {
   // Undo the step: even the kept change goes back.
   await page.getByRole('button', { name: 'Undo this step' }).click()
   await expect(page.locator('.checkpoint')).toContainText('undone')
-  expect(fs.readFileSync(notes, 'utf8')).not.toContain('TWENTY-FIVE')
+  expect(fs.readFileSync(notes, 'utf8')).not.toContain('FIFTEEN')
   await close()
 })
 
@@ -567,14 +567,14 @@ test('Git: stage one block, stash, merge with a conflict, resolve it and continu
   await page.getByRole('tab', { name: 'Git' }).click()
   // Stage a single block of a two-block change.
   const mainText = fs.readFileSync(notes, 'utf8')
-  fs.writeFileSync(path.join(root, 'notes.txt'), mainText.replace('line 5\n', 'FIVE\n').replace('line 25\n', 'TWENTY-FIVE\n'))
+  fs.writeFileSync(path.join(root, 'notes.txt'), mainText.replace('line 5\n', 'FIVE\n').replace('line 15\n', 'FIFTEEN\n'))
   await page.getByRole('tab', { name: 'Files' }).click()
   await page.getByRole('tab', { name: 'Git' }).click()
   await page.locator('.git-row', { hasText: 'notes.txt' }).first().click()
   await expect(page.locator('.hunk-actions')).toHaveCount(2)
   await page.locator('.hunk-actions').first().getByRole('button', { name: 'Stage' }).click()
   await expect.poll(() => git('show', ':notes.txt')).toContain('FIVE')
-  expect(git('show', ':notes.txt')).not.toContain('TWENTY-FIVE')
+  expect(git('show', ':notes.txt')).not.toContain('FIFTEEN')
   await expect(page.locator('.git-title', { hasText: 'Staged' })).toBeVisible()
   git('reset', '-q')
 
