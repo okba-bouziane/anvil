@@ -49,7 +49,7 @@ const off = { completionItems: false, hovers: false, documentSymbols: false, def
 monaco.languages.typescript.typescriptDefaults.setModeConfiguration(off)
 monaco.languages.typescript.javascriptDefaults.setModeConfiguration(off)
 
-monaco.editor.defineTheme('anvil', {
+monaco.editor.defineTheme('pitoo', {
   base: 'vs-dark',
   inherit: true,
   // The code colors of the Andromeda theme, calmed a little.
@@ -165,7 +165,7 @@ monaco.editor.defineTheme('anvil', {
   }
 })
 
-monaco.editor.defineTheme('anvil-light', {
+monaco.editor.defineTheme('pitoo-light', {
   base: 'vs',
   inherit: true,
   // The same color for the same kind of code as the dark theme, deepened and calmed so it reads well on paper.

@@ -1,7 +1,7 @@
-import type { AnvilApi } from '../../shared/types'
+import type { PitooApi } from '../../shared/types'
 
 declare global {
   interface Window {
-    anvil: AnvilApi
+    pitoo: PitooApi
   }
 }

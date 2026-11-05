@@ -13,7 +13,7 @@ const write = (rel: string, text: string) => {
   fs.writeFileSync(path.join(root, rel), text)
 }
 beforeEach(() => {
-  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-intel-')))
+  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-intel-')))
   write('tsconfig.json', JSON.stringify({ compilerOptions: { strict: true, target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', noEmit: true, skipLibCheck: true, types: [] }, include: ['src'] }))
   write('package.json', '{"type":"module"}')
   write('src/lib.ts', 'export interface Item {\n  /** How many */\n  count: number\n}\nexport function add(a: number, b: number): number {\n  return a + b\n}\n')

@@ -1,0 +1,12 @@
+# Pitoo
+
+> A free, open source desktop code editor for Mac (Apple Silicon), Windows and Linux. It works with no internet, no account and no AI. An AI agent is optional: a local model through MLX, Ollama or LM Studio, or your own Anthropic or OpenAI key. Pitoo was called Anvil before version 0.4.0.
+
+## Pages
+- [Home](https://pitoo.vercel.app/)
+- [Documentation](https://pitoo.vercel.app/docs)
+- [FAQ](https://pitoo.vercel.app/faq)
+- [Offline code editor](https://pitoo.vercel.app/offline-code-editor)
+- [VS Code comparison](https://pitoo.vercel.app/vs-code-alternative)
+- [Local AI code editor](https://pitoo.vercel.app/local-ai-code-editor)
+- [Source code](https://github.com/okba-bouziane/pitoo)

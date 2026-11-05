@@ -1,7 +1,7 @@
 import type { IntelDiagnostic, LintMessage } from '../../shared/types'
 import { monaco } from './monaco'
 
-const api = window.anvil
+const api = window.pitoo
 const CODE = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
 const PREFIX = '/file/'
 
@@ -73,7 +73,7 @@ const dropCopy = (path: string, e: Entry) => {
 
 function setMarkers(path: string, model: monaco.editor.ITextModel, list: IntelDiagnostic[]): void {
   problems.set(path, list)
-  monaco.editor.setModelMarkers(model, 'anvil', list.map((d) => ({
+  monaco.editor.setModelMarkers(model, 'pitoo', list.map((d) => ({
     startLineNumber: d.line,
     startColumn: d.column,
     endLineNumber: d.endLine,

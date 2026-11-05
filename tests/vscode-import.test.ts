@@ -11,7 +11,7 @@ const write = (file: string, text: string) => {
   fs.writeFileSync(file, text)
 }
 beforeEach(() => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-vs-'))
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-vs-'))
   user = path.join(root, 'User')
   extensions = path.join(root, 'extensions')
 })

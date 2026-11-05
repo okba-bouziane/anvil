@@ -166,7 +166,7 @@ export interface VscodeImport {
   snippets: number
   themes: string[]
   extensionsUsed: string[]
-  /** Extensions that are programs. Anvil can't run them. */
+  /** Extensions that are programs. Pitoo can't run them. */
   extensionsSkipped: string[]
 }
 
@@ -426,7 +426,7 @@ export interface ProjectState {
 
 export type ModelStatus = 'online' | 'offline' | 'starting' | 'nokey'
 
-export interface AnvilApi {
+export interface PitooApi {
   platform: string
   getSettings(): Promise<Settings>
   localSetup(): Promise<LocalSetup>

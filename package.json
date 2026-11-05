@@ -1,8 +1,8 @@
 {
-  "name": "anvil",
-  "productName": "Anvil",
-  "version": "0.3.0",
-  "description": "A code editor with an optional AI agent that keeps working with no internet",
+  "name": "pitoo",
+  "productName": "Pitoo",
+  "version": "0.4.0",
+  "description": "A free code editor with an optional AI agent that keeps working with no internet",
   "private": true,
   "main": "out/main/index.js",
   "scripts": {
@@ -13,13 +13,14 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "npm run build && playwright test",
-    "dist": "npm run build && electron-builder --mac dir -c.npmRebuild=false && codesign --force --deep --sign - dist/mac-*/Anvil.app",
+    "dist": "npm run build && electron-builder --mac dir -c.npmRebuild=false && codesign --force --deep --sign - dist/mac-*/Pitoo.app",
     "postinstall": "node scripts/postinstall.cjs",
     "dist:win": "npm run build && electron-builder --win --publish never -c.npmRebuild=false",
-    "dist:linux": "npm run build && electron-builder --linux --publish never"
+    "dist:linux": "npm run build && electron-builder --linux --publish never",
+    "downloads": "node scripts/downloads.mjs"
   },
   "build": {
-    "appId": "dev.okba.anvil",
+    "appId": "dev.okba.pitoo",
     "extraResources": [
       {
         "from": "resources/js-debug",
@@ -65,7 +66,7 @@
       "icon": "build/icon.png",
       "maintainer": "Okba Bouziane"
     },
-    "artifactName": "Anvil-${os}-${arch}.${ext}",
+    "artifactName": "Pitoo-${os}-${arch}.${ext}",
     "electronLanguages": [
       "en"
     ]
@@ -104,9 +105,9 @@
   },
   "license": "MIT",
   "author": "Okba Bouziane",
-  "homepage": "https://github.com/okba-bouziane/anvil",
+  "homepage": "https://github.com/okba-bouziane/pitoo",
   "repository": {
     "type": "git",
-    "url": "https://github.com/okba-bouziane/anvil.git"
+    "url": "https://github.com/okba-bouziane/pitoo.git"
   }
 }

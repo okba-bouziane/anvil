@@ -12,7 +12,7 @@ import { DEFAULT_SETTINGS, type UiItem } from '../src/shared/types'
 const real = process.env.REAL_MODEL ? it : it.skip
 
 function project(): string {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-real-')))
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-real-')))
   fs.mkdirSync(path.join(root, 'src'))
   fs.mkdirSync(path.join(root, 'node_modules'))
   fs.symlinkSync(path.resolve('node_modules/typescript'), path.join(root, 'node_modules/typescript'), 'junction')

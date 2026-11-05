@@ -9,7 +9,7 @@ import { portOf, serverCommand, shellQuote } from '../src/main/model'
 let root: string
 const run = (...args: string[]) => execFileSync('git', args, { cwd: root, stdio: 'ignore' })
 beforeEach(() => {
-  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-git-')))
+  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-git-')))
 })
 
 it('reports when a folder is not a repository, and can start one', async () => {

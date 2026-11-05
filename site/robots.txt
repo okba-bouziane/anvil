@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://pitoo.vercel.app/sitemap.xml

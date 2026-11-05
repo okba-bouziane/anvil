@@ -18,7 +18,7 @@ export class Terminals {
       cwd: cwd || os.homedir(),
       cols: 100,
       rows: 24,
-      env: { ...process.env, TERM_PROGRAM: 'Anvil' } as Record<string, string>
+      env: { ...process.env, TERM_PROGRAM: 'Pitoo' } as Record<string, string>
     })
     term.onData((data) => this.emit({ type: 'data', id, data }))
     term.onExit(() => {

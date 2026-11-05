@@ -1,9 +1,9 @@
-// Opens Anvil on screen and types a request, so the run can be watched. Only builds and tests get approved.
+// Opens Pitoo on screen and types a request, so the run can be watched. Only builds and tests get approved.
 import { _electron as electron } from '@playwright/test'
 
 const [dataDir, request] = process.argv.slice(2)
 const SAFE = /^(cd (backend|frontend) && )?(npm test|npm run (build|test)|npx tsc --noEmit[^;&|]*|npx ng build|npx vitest run)$/
-const app = await electron.launch({ args: ['.'], env: { ...process.env, ANVIL_DATA_DIR: dataDir } })
+const app = await electron.launch({ args: ['.'], env: { ...process.env, PITOO_DATA_DIR: dataDir } })
 const page = await app.firstWindow()
 await page.waitForSelector('.tree-row')
 await page.waitForSelector('.model.online', { timeout: 150000 })

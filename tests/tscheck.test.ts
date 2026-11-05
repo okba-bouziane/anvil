@@ -7,7 +7,7 @@ import { checkFiles } from '../src/main/tscheck'
 let root: string
 const nm = path.resolve('node_modules/typescript')
 beforeEach(() => {
-  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-')))
+  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-')))
   fs.writeFileSync(path.join(root, 'package.json'), '{}')
   fs.writeFileSync(path.join(root, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', noEmit: true, skipLibCheck: true, types: [] }, include: ['*.ts'] }))
 })

@@ -10,7 +10,7 @@ const write = (rel: string, text = '') => {
   fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true })
   fs.writeFileSync(path.join(root, rel), text)
 }
-beforeEach(() => { root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-ws-'))) })
+beforeEach(() => { root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-ws-'))) })
 afterEach(() => { setScope(root, null); fs.rmSync(root, { recursive: true, force: true }) })
 
 describe('workspace folders', () => {
@@ -74,7 +74,7 @@ describe('repositories', () => {
 })
 
 describe('.vscode files', () => {
-  it('reads the editor settings Anvil understands', () => {
+  it('reads the editor settings Pitoo understands', () => {
     write('.vscode/settings.json', '// mine\n{ "editor.tabSize": 4, "editor.wordWrap": "on", "files.autoSave": "off", "editor.formatOnSave": true, "other": 1, }')
     expect(vscodeEditorSettings(root, null)).toEqual({ tabSize: 4, wordWrap: true, autoSave: false, formatOnSave: true })
     expect(vscodeEditorSettings(fs.mkdtempSync(path.join(os.tmpdir(), 'empty-')), null)).toEqual({})

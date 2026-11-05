@@ -10,7 +10,7 @@ const write = (rel: string, text: string) => {
   fs.writeFileSync(path.join(root, rel), text)
 }
 
-beforeEach(() => { root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-tooling-'))) })
+beforeEach(() => { root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-tooling-'))) })
 afterEach(() => fs.rmSync(root, { recursive: true, force: true }))
 
 function fakeEslint(dir: string) {

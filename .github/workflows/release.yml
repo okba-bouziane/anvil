@@ -31,7 +31,21 @@ jobs:
       - run: npm run ${{ matrix.script }}
       - name: Zip the Mac app
         if: runner.os == 'macOS'
-        run: ditto -c -k --keepParent dist/mac-arm64/Anvil.app dist/Anvil-mac-arm64.zip
+        run: |
+          ditto -c -k --keepParent dist/mac-arm64/Pitoo.app dist/Pitoo-mac-arm64.zip
+          # Versions from before the rename update from these names, and expect this folder layout.
+          mkdir legacy
+          ditto dist/mac-arm64/Pitoo.app legacy/Anvil.app
+          ln -s Pitoo legacy/Anvil.app/Contents/MacOS/Anvil
+          codesign --force --deep --sign - legacy/Anvil.app
+          ditto -c -k --keepParent legacy/Anvil.app dist/Anvil-mac-arm64.zip
+      - name: Copy the installers under their old names
+        if: runner.os != 'macOS'
+        shell: bash
+        run: |
+          for file in dist/Pitoo-*.exe dist/Pitoo-*.AppImage dist/Pitoo-*.deb; do
+            [ -e "$file" ] && cp "$file" "${file/Pitoo-/Anvil-}"
+          done
       - uses: softprops/action-gh-release@v2
         with:
           draft: true

@@ -2,8 +2,8 @@ import { execFileSync, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
-const LATEST = 'https://api.github.com/repos/okba-bouziane/anvil/releases/latest'
-const DOWNLOADS = 'https://github.com/okba-bouziane/anvil/releases/download/'
+const LATEST = 'https://api.github.com/repos/okba-bouziane/pitoo/releases/latest'
+const DOWNLOADS = 'https://github.com/okba-bouziane/pitoo/releases/download/'
 
 export interface ReleaseAsset {
   name: string
@@ -27,7 +27,7 @@ export interface Machine {
 export interface Installer {
   /** What the button says once the download is ready. */
   label: string
-  /** Whether Anvil has to close first. */
+  /** Whether Pitoo has to close first. */
   quits: boolean
   run(): void
 }
@@ -50,9 +50,9 @@ export async function latestRelease(): Promise<Release | null> {
 
 /** The installer for this computer. Null means there isn't one, so the person gets the release page instead. */
 export function assetFor(assets: ReleaseAsset[], machine: Machine): ReleaseAsset | null {
-  const name = machine.platform === 'darwin' && machine.arch === 'arm64' ? 'Anvil-mac-arm64.zip'
-    : machine.platform === 'win32' && machine.arch === 'x64' ? 'Anvil-win-x64.exe'
-    : machine.platform === 'linux' && machine.arch === 'x64' ? (machine.appImage ? 'Anvil-linux-x86_64.AppImage' : 'Anvil-linux-amd64.deb')
+  const name = machine.platform === 'darwin' && machine.arch === 'arm64' ? 'Pitoo-mac-arm64.zip'
+    : machine.platform === 'win32' && machine.arch === 'x64' ? 'Pitoo-win-x64.exe'
+    : machine.platform === 'linux' && machine.arch === 'x64' ? (machine.appImage ? 'Pitoo-linux-x86_64.AppImage' : 'Pitoo-linux-amd64.deb')
     : null
   const asset = assets.find((a) => a.name === name)
   return asset && asset.browser_download_url.startsWith(DOWNLOADS) ? asset : null
@@ -86,7 +86,7 @@ export async function downloadAsset(asset: Pick<ReleaseAsset, 'name' | 'size' | 
   return file
 }
 
-/** Waits for Anvil to close, swaps the new copy in, puts the old one back if that fails, then starts it. */
+/** Waits for Pitoo to close, swaps the new copy in, puts the old one back if that fails, then starts it. */
 export const SWAP_SCRIPT = `
 pid=$1; target=$2; new=$3; shift 3
 while kill -0 "$pid" 2>/dev/null; do sleep 0.2; done
@@ -113,11 +113,11 @@ const writable = (dir: string) => {
 export function prepareInstall(file: string, machine: Machine, execPath: string, pid: number, openFile: (file: string) => void): Installer {
   if (machine.platform === 'darwin') {
     const target = path.resolve(execPath, '../../..')
-    if (!target.endsWith('.app') || target.includes('/AppTranslocation/') || !writable(path.dirname(target))) throw new Error('Move Anvil to your Applications folder, then update again.')
+    if (!target.endsWith('.app') || target.includes('/AppTranslocation/') || !writable(path.dirname(target))) throw new Error('Move Pitoo to your Applications folder, then update again.')
     const dir = path.dirname(file)
     execFileSync('ditto', ['-x', '-k', file, dir])
-    const replacement = path.join(dir, 'Anvil.app')
-    if (!fs.existsSync(path.join(replacement, 'Contents/MacOS/Anvil'))) throw new Error('The download did not contain Anvil.')
+    const replacement = path.join(dir, 'Pitoo.app')
+    if (!fs.existsSync(path.join(replacement, 'Contents/MacOS/Pitoo'))) throw new Error('The download did not contain Pitoo.')
     return { label: 'Restart to update', quits: true, run: () => swapLater(pid, target, replacement, ['open', target]) }
   }
   if (machine.platform === 'win32') {
@@ -125,7 +125,7 @@ export function prepareInstall(file: string, machine: Machine, execPath: string,
   }
   if (machine.appImage) {
     const target = machine.appImage
-    if (!writable(path.dirname(target))) throw new Error(`Anvil can't write to ${path.dirname(target)}. Download the new version from the release page.`)
+    if (!writable(path.dirname(target))) throw new Error(`Pitoo can't write to ${path.dirname(target)}. Download the new version from the release page.`)
     fs.chmodSync(file, 0o755)
     return { label: 'Restart to update', quits: true, run: () => swapLater(pid, target, file, [target]) }
   }

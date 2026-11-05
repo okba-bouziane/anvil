@@ -40,9 +40,21 @@ export function Icon({ name, size = 15 }: { name: string; size?: number }) {
   )
 }
 
-/** The Anvil logo, a small character. It blinks by itself. `hop` greets once, `working` keeps hopping while the model works. */
-export function Logo({ motion }: { motion?: 'hop' | 'working' }) {
-  return <span className={`logo ${motion ?? ''}`}><svg viewBox="0 0 64 64" aria-hidden><g className="logo-body"><path className="logo-fill" d="M3.5 19.5C12 20.5 17 17 23 14C25 13 27 12 30 12H56C59.5 12 62 14.5 62 18V26C62 29 60 31 57 31.3C52 31.8 47.5 34 46 38V41C46 44.5 49 47 53.5 48C56 48.6 57 50 57 52V54C57 56 55.6 57.4 53.6 57.4H18.4C16.4 57.4 15 56 15 54V52C15 50 16 48.6 18.5 48C23 47 26 44.5 26 41V38C25 33 13 26 3.5 22.5C1.8 21.8 1.8 19.4 3.5 19.5Z"/><g className="logo-eyes"><circle className="logo-eye" cx="35" cy="21" r="3"/><circle className="logo-eye" cx="49" cy="21" r="3"/></g><path className="logo-happy" d="M31.5 22C32.5 19 37.500 19 38.500 22M45.500 22C46.500 19 51.500 19 52.500 22"/><path className="logo-smile" d="M39.500 25.500C40.500 27.500 43.500 27.500 44.500 25.500"/></g><path className="logo-star" style={{ '--d': '0s' } as CSSProperties} transform="translate(6 8)" d="M0-5C.6-1.6 1.6-.6 5 0C1.6.6.6 1.6 0 5C-.6 1.6-1.6.6-5 0C-1.6-.6-.6-1.6 0-5Z"/><path className="logo-star" style={{ '--d': '.06s' } as CSSProperties} transform="translate(62 4) scale(.8)" d="M0-5C.6-1.6 1.6-.6 5 0C1.6.6.6 1.6 0 5C-.6 1.6-1.6.6-5 0C-1.6-.6-.6-1.6 0-5Z"/><path className="logo-star" style={{ '--d': '.12s' } as CSSProperties} transform="translate(34 2) scale(.6)" d="M0-5C.6-1.6 1.6-.6 5 0C1.6.6.6 1.6 0 5C-.6 1.6-1.6.6-5 0C-1.6-.6-.6-1.6 0-5Z"/></svg></span>
+/** The Pitoo logo: a small orange cat. It stays still, so nothing moves while you code. */
+export function Logo() {
+  return (
+    <span className="logo">
+      <svg viewBox="0 0 34 30" aria-hidden>
+        <path d="M4 11L4.500 3c.1-1.200 1.400-1.700 2.300-.8L13 7zM30 11l-.5-8c-.1-1.200-1.400-1.700-2.300-.8L21 7z" fill="#f6a04d" />
+        <ellipse cx="17" cy="16" rx="15" ry="13" fill="#f6a04d" />
+        <circle cx="10.500" cy="15" r="3.300" fill="#2fc06c" /><circle cx="23.500" cy="15" r="3.300" fill="#2fc06c" />
+        <circle cx="10.900" cy="15" r="2" fill="#201a16" /><circle cx="23.900" cy="15" r="2" fill="#201a16" />
+        <circle cx="11.700" cy="14" r=".7" fill="#fff" /><circle cx="24.700" cy="14" r=".7" fill="#fff" />
+        <path d="M15.500 20q1.500 1.500 3 0" stroke="#7a4220" strokeWidth="1" fill="none" strokeLinecap="round" />
+        <ellipse cx="6" cy="20" rx="2.500" ry="1.400" fill="#ff8f9a" opacity=".7" /><ellipse cx="28" cy="20" rx="2.500" ry="1.400" fill="#ff8f9a" opacity=".7" />
+      </svg>
+    </span>
+  )
 }
 
 /** A file or folder icon from Material Icon Theme, or a plain outline if the setting is off. */

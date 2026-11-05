@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Local AI code editor: run a coding agent on your own computer | Pitoo</title>
+<meta name="description" content="Pitoo runs an AI coding agent with local models through MLX, Ollama or LM Studio. Your code stays on your computer, and every edit can be reviewed and undone.">
+<link rel="canonical" href="https://pitoo.vercel.app/local-ai-code-editor">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Pitoo">
+<meta property="og:title" content="Local AI code editor: run a coding agent on your own computer | Pitoo">
+<meta property="og:description" content="Pitoo runs an AI coding agent with local models through MLX, Ollama or LM Studio. Your code stays on your computer, and every edit can be reviewed and undone.">
+<meta property="og:url" content="https://pitoo.vercel.app/local-ai-code-editor">
+<meta property="og:image" content="https://pitoo.vercel.app/img/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#131211">
+<link rel="icon" href="/img/icon.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="doc-page">
+<header class="nav stuck-always">
+  <a class="brand" href="/" aria-label="Pitoo home"><span class="word">Pitoo</span><span class="cat-peek" aria-hidden="true"></span></a>
+  <nav aria-label="Main"><a href="/#features">Features</a><a href="/docs">Docs</a><a href="/faq" aria-current="page">FAQ</a><a href="https://github.com/okba-bouziane/pitoo">GitHub</a></nav>
+  <a class="btn primary small" href="/#download">Download</a>
+</header>
+<main class="page-prose">
+<h1>A code editor with a local AI agent</h1>
+<p class="lead">Pitoo can run its agent on a model on your own computer, so your code stays there. It's built around what small models get wrong.</p>
+<h2>How it copes with small models</h2>
+<ul><li><b>Every edit can be reviewed:</b> Keep or undo each block, file or whole step.</li><li><b>Missing imports get fixed:</b> after an edit, your project's TypeScript adds them and sends other errors back to the model.</li><li><b>Loops get caught:</b> repeated calls are stopped instead of running forever.</li><li><b>Long chats get trimmed:</b> in a way that keeps waits short.</li></ul>
+<h2>What to expect</h2>
+<p>On a MacBook with an M1 Pro and 16 GB of memory, a 6 GB model wrote about 24 tokens per second in one test, and took about 10 minutes to add a feature across 11 files. Earlier versions of that test failed, so review the work. Small models suit single files and small features better than whole projects.</p>
+<h2>Setup</h2>
+<p>On a Mac with Apple Silicon, Settings guides you through MLX. On any system, you can point Pitoo at Ollama or LM Studio. If you'd rather use a bigger model, Anthropic and OpenAI work with your own API key.</p><div class="cta"><a class="btn primary large" href="/#download">Download Pitoo</a><a class="btn large" href="/docs">Read the docs</a></div>
+</main>
+<footer>
+  <a class="brand" href="/"><span class="mark" data-logo></span>Pitoo</a>
+  <span>Open source under the MIT license.</span>
+  <a href="/docs">Docs</a><a href="/faq">FAQ</a><a href="https://github.com/okba-bouziane/pitoo">GitHub</a><a href="https://github.com/okba-bouziane/pitoo/issues">Report a problem</a>
+  <span class="right">Made by <a href="https://devokba.vercel.app">Okba Bouziane</a></span>
+</footer>
+<script src="/cat.js"></script>
+<script src="/page.js"></script>
+</body>
+</html>

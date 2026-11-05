@@ -7,7 +7,7 @@ import { projectTree, relatedFiles } from '../src/main/context'
 
 let root: string
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-protect-'))
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-protect-'))
   fs.mkdirSync(path.join(root, 'config'))
   fs.writeFileSync(path.join(root, '.env'), 'PASSWORD=hunter2\n')
   fs.writeFileSync(path.join(root, '.env.production'), 'PASSWORD=hunter2\n')
@@ -28,7 +28,7 @@ describe('protecting secrets from the agent', () => {
   })
 
   it('follows the project ignore file, including exceptions', () => {
-    fs.writeFileSync(path.join(root, '.sindanignore'), '# mine\nconfig/\n!.env.production\n')
+    fs.writeFileSync(path.join(root, '.pitooignore'), '# mine\nconfig/\n!.env.production\n')
     expect(isProtected(root, 'config/private.txt')).toBe(true)
     expect(isProtected(root, '.env.production')).toBe(false)
     expect(isProtected(root, '.env')).toBe(true)

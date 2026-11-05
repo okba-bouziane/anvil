@@ -3,7 +3,7 @@ import type { EditorSettings, Effort, OpenAiEffort, ImportedAssets, LocalSetup, 
 import { PROVIDER_LABEL } from '../../shared/types'
 import { Icon } from './Icon'
 
-const api = window.anvil
+const api = window.pitoo
 const PROVIDERS: ProviderId[] = ['local', 'anthropic', 'openai', 'custom']
 const BLURB: Record<ProviderId, string> = {
   local: 'Runs on this computer with MLX and works with no internet. Your code stays here.',
@@ -64,7 +64,7 @@ function UpdateRow() {
   }
   return (
     <div className="setting-row">
-      <span>Anvil {version}{note && <small>{note}</small>}</span>
+      <span>Pitoo {version}{note && <small>{note}</small>}</span>
       <button disabled={checking} onClick={() => void check()}>{checking ? 'Checking…' : 'Check now'}</button>
     </div>
   )
@@ -96,7 +96,7 @@ function EditorPanel({ settings, assets, onSettings, onImported, onError }: { se
         {assets.themes.length > 0 && (
           <div className="setting-row"><span>Editor colors<small>Imported themes color the code, and are approximate</small></span>
             <select id="editor-theme" value={settings.editorTheme ?? ''} onChange={(ev) => onSettings({ editorTheme: ev.target.value || undefined })}>
-              <option value="">Anvil</option>
+              <option value="">Pitoo</option>
               {assets.themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </div>
@@ -108,7 +108,7 @@ function EditorPanel({ settings, assets, onSettings, onImported, onError }: { se
         {toggle('Word wrap', 'Wraps long lines', e.wordWrap, (v) => set({ wordWrap: v }))}
         {toggle('Show who changed each line', 'Git author, date and message at the end of the current line', e.blame, (v) => set({ blame: v }))}
         <div className="setting-row"><span>Cursor</span><select id="cursor-style" value={settings.cursorStyle ?? 'line'} onChange={(ev) => onSettings({ cursorStyle: ev.target.value as Settings['cursorStyle'] })}><option value="line">Line</option><option value="block">Block</option><option value="underline">Underline</option></select></div>
-        {toggle('Leave the graphics chip to the local model', 'Makes a local model faster, but scrolling less smooth. Applies after you restart Anvil', !!settings.leaveGpuToModel, (v) => onSettings({ leaveGpuToModel: v }))}
+        {toggle('Leave the graphics chip to the local model', 'Makes a local model faster, but scrolling less smooth. Applies after you restart Pitoo', !!settings.leaveGpuToModel, (v) => onSettings({ leaveGpuToModel: v }))}
         {toggle('Sticky scroll', 'Keeps the function you are in at the top while you scroll', settings.stickyScroll !== false, (v) => onSettings({ stickyScroll: v }))}
         {toggle('Fix ESLint problems on save', 'Uses the project\'s own ESLint rules', !!settings.fixOnSave, (v) => onSettings({ fixOnSave: v }))}
         {toggle('File icons', 'Colored icons for files and folders, from Material Icon Theme', settings.fileIcons !== false, (v) => onSettings({ fileIcons: v }))}
@@ -118,7 +118,7 @@ function EditorPanel({ settings, assets, onSettings, onImported, onError }: { se
         <UpdateRow />
       </div>
       <div className="field"><span>Import from VS Code</span>
-        <p className="blurb">Copies your settings, snippets and color themes. Extensions that are programs, like ESLint or GitLens, can't run in Anvil, and the list below will name them.</p>
+        <p className="blurb">Copies your settings, snippets and color themes. Extensions that are programs, like ESLint or GitLens, can't run in Pitoo, and the list below will name them.</p>
         <button className="primary use" disabled={busy} onClick={run}>{busy ? 'Importing…' : 'Import from VS Code'}</button>
       </div>
       {result && !result.found && <div className="import-result"><b>VS Code wasn't found on this computer.</b></div>}

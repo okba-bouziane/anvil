@@ -5,3 +5,4 @@ test-results
 .DS_Store
 playwright-report
 src/renderer/public/file-icons
+.downloads/

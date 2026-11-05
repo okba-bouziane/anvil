@@ -14,7 +14,7 @@ const read = (name: string) => fs.readFileSync(path.join(root, name), 'utf8')
 const commitAll = (message: string) => { run('add', '.'); run('commit', '-qm', message) }
 
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-git-'))
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-git-'))
   run('init', '-qb', 'main')
   run('config', 'user.email', 'dev@example.com')
   run('config', 'user.name', 'Dev')
@@ -164,12 +164,12 @@ describe('commits and branches', () => {
 
 describe('remotes', () => {
   it('fetches, pushes with upstream, pulls and follows a remote branch', async () => {
-    const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-remote-'))
+    const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-remote-'))
     execFileSync('git', ['init', '-q', '--bare', '-b', 'main', bare])
     run('remote', 'add', 'origin', bare)
     await git.pushCurrent(root)
     expect((await git.details(root)).branches[0].upstream).toBe('origin/main')
-    const other = fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-clone-'))
+    const other = fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-clone-'))
     execFileSync('git', ['clone', '-q', bare, other])
     const inOther = (...args: string[]) => execFileSync('git', args, { cwd: other, encoding: 'utf8' })
     inOther('config', 'user.email', 'x@example.com')

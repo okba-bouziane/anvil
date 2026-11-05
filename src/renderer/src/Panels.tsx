@@ -3,7 +3,7 @@ import { layoutGraph, type GraphRow } from '../../shared/gitgraph'
 import type { CommitFile, CommitInfo, GitDetails, GitStatus, PullRequest, ScriptEntry, SearchHit } from '../../shared/types'
 import { FileIcon, Icon } from './Icon'
 
-const api = window.anvil
+const api = window.pitoo
 
 export function ScriptsPanel({ revision, onRun, onError }: { revision: number; onRun(script: ScriptEntry): void; onError(e: unknown): void }) {
   const [scripts, setScripts] = useState<ScriptEntry[] | null>(null)
@@ -214,7 +214,7 @@ export function HistoryPanel({ revision, file, onClearFile, onOpenDiff, onError 
             <div className="pop-row" role="button" onClick={() => act(api.gitOp('revert', menu.commit.sha))}>Revert this commit</div>
             <div className="pop-row" role="button" onClick={() => act(api.gitOp('reset', menu.commit.sha, 'soft'))}>Reset to here, keep staged</div>
             <div className="pop-row" role="button" onClick={() => act(api.gitOp('reset', menu.commit.sha, 'mixed'))}>Reset to here, keep files</div>
-            <div className="pop-row danger" role="button" onClick={() => { if (window.confirm(`Reset to ${menu.commit.sha.slice(0, 7)} and throw away all later work and uncommitted changes? This can't be undone from Anvil.`)) act(api.gitOp('reset', menu.commit.sha, 'hard')); else setMenu(null) }}>Reset to here, discard everything</div>
+            <div className="pop-row danger" role="button" onClick={() => { if (window.confirm(`Reset to ${menu.commit.sha.slice(0, 7)} and throw away all later work and uncommitted changes? This can't be undone from Pitoo.`)) act(api.gitOp('reset', menu.commit.sha, 'hard')); else setMenu(null) }}>Reset to here, discard everything</div>
             <div className="pop-row" role="button" onClick={() => { void navigator.clipboard.writeText(menu.commit.sha); setMenu(null) }}>Copy commit ID</div>
           </div>
         </>

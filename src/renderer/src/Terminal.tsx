@@ -9,7 +9,7 @@ import { findTerminalLinks } from '../../shared/termlinks'
 import { DebugConsole } from './DebugPanel'
 import { HistoryPanel } from './Panels'
 
-const api = window.anvil
+const api = window.pitoo
 const THEMES = {
   dark: { background: '#211f1c', foreground: '#e0dacf', cursor: '#d8d2c6', cursorAccent: '#211f1c', selectionBackground: '#fff4e428', black: '#272420', red: '#dc8f7c', green: '#93bd94', yellow: '#dcc08a', blue: '#8fb0c9', magenta: '#bfa3bf', cyan: '#8fbdb4', white: '#cfc8bb', brightBlack: '#827a70', brightRed: '#e8ab9c', brightGreen: '#a9cfa9', brightYellow: '#f2d896', brightBlue: '#a3cbf0', brightMagenta: '#cfbdf0', brightCyan: '#a3dade', brightWhite: '#efe9dd' },
   light: { background: '#faf7f0', foreground: '#2a2520', cursor: '#4a4238', cursorAccent: '#faf7f0', selectionBackground: '#2a252022', black: '#1a2129', red: '#b83a28', green: '#1f7a4d', yellow: '#96590d', blue: '#1f66b0', magenta: '#6a3fb0', cyan: '#1a7a80', white: '#e1e5ea', brightBlack: '#677280', brightRed: '#c9503d', brightGreen: '#2b8f5f', brightYellow: '#a86a1c', brightBlue: '#2f79c4', brightMagenta: '#7d54c2', brightCyan: '#25909a', brightWhite: '#f7f8fa' }

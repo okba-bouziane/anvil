@@ -1,6 +1,6 @@
 import type { DebugEvent, DebugFrame } from '../../shared/types'
 
-const api = window.anvil
+const api = window.pitoo
 
 export interface Breakpoint {
   line: number

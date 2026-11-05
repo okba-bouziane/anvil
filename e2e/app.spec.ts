@@ -30,13 +30,13 @@ function fakeModel(answers: string[]) {
 }
 
 async function launch(answers: string[]): Promise<{ app: ElectronApplication; page: Page; root: string; close(): Promise<void> }> {
-  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-data-'))
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-proj-')))
+  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-data-'))
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-proj-')))
   const lines = Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join('\n') + '\n'
   fs.writeFileSync(path.join(root, 'notes.txt'), lines)
   const model = await fakeModel(answers)
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ provider: 'local', baseUrls: { local: model.url }, lastProject: root }))
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, ANVIL_HIDDEN: '1', ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, PITOO_HIDDEN: '1', PITOO_DATA_DIR: data, PITOO_MEMORY_SECRETS: '1' } })
   const page = await app.firstWindow()
   const errors: string[] = []
   // Monaco throws this one from its own diff timer when a view closes. It has no effect on the app.
@@ -173,13 +173,13 @@ test('API keys are masked and never reach the window, and models can be switched
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page.locator('.key-saved')).toContainText('secure storage')
   expect(await page.evaluate(() => JSON.stringify(window.localStorage) + document.body.innerText)).not.toContain('sk-secret-value')
-  expect(JSON.stringify(await page.evaluate(() => window.anvil.getSettings()))).not.toContain('sk-secret-value')
+  expect(JSON.stringify(await page.evaluate(() => window.pitoo.getSettings()))).not.toContain('sk-secret-value')
   await page.getByRole('button', { name: 'Use Anthropic' }).click()
   await page.getByRole('button', { name: 'Close', exact: true }).click()
   await expect(page.locator('.where')).toContainText('Sends code to Anthropic')
   await expect(page.locator('.model')).toContainText('claude-opus-5-5')
   await page.locator('#effort-quick').selectOption('max')
-  expect((await page.evaluate(() => window.anvil.getSettings())).effort).toBe('max')
+  expect((await page.evaluate(() => window.pitoo.getSettings())).effort).toBe('max')
   await close()
 })
 
@@ -383,14 +383,14 @@ test('imports from VS Code without running extensions', async () => {
 })
 
 test('everything except the agent works with no model and no API keys', async () => {
-  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-data-'))
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-proj-')))
+  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-data-'))
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-proj-')))
   fs.writeFileSync(path.join(root, 'package.json'), '{"type":"module"}\n')
   fs.writeFileSync(path.join(root, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', noEmit: true, skipLibCheck: true, types: [] }, include: ['*.ts'] }))
   fs.writeFileSync(path.join(root, 'a.ts'), 'export const n: number = 1\n')
   // Nothing is listening on this port, so no model can answer.
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ provider: 'local', baseUrls: { local: 'http://127.0.0.1:9/v1' }, lastProject: root }))
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, ANVIL_HIDDEN: '1', ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, PITOO_HIDDEN: '1', PITOO_DATA_DIR: data, PITOO_MEMORY_SECRETS: '1' } })
   const page = await app.firstWindow()
   const errors: string[] = []
   page.on('pageerror', (e) => { if (e.message !== 'no diff result available') errors.push(e.message) })
@@ -475,10 +475,10 @@ test('chat and pending changes survive a restart', async () => {
   const first = await launch(['<write_file path="a.txt">hello</write_file>', 'Done.'])
   await ask(first.page, 'write it')
   await expect(first.page.locator('.msg.assistant').last()).toContainText('Done.')
-  const data = (await first.app.evaluate(() => process.env.ANVIL_DATA_DIR))!
+  const data = (await first.app.evaluate(() => process.env.PITOO_DATA_DIR))!
   await first.app.close()
 
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, ANVIL_HIDDEN: '1', ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, PITOO_HIDDEN: '1', PITOO_DATA_DIR: data, PITOO_MEMORY_SECRETS: '1' } })
   const page = await app.firstWindow()
   await expect(page.locator('.msg.user')).toHaveText('write it')
   await expect(page.locator('.badge')).toHaveText('1')
@@ -487,9 +487,9 @@ test('chat and pending changes survive a restart', async () => {
 
 test('offers an update, shows the download, then offers to restart', async () => {
   const { app, page, close } = await launch([])
-  const send = (payload: unknown) => app.evaluate(({ BrowserWindow }, p) => BrowserWindow.getAllWindows()[0].webContents.send('anvil:event', p), payload)
+  const send = (payload: unknown) => app.evaluate(({ BrowserWindow }, p) => BrowserWindow.getAllWindows()[0].webContents.send('pitoo:event', p), payload)
   await expect(page.locator('.update-btn')).toHaveCount(0)
-  await send({ type: 'update', version: 'v9.9.9', url: 'https://github.com/okba-bouziane/anvil/releases/tag/v9.9.9', canInstall: true })
+  await send({ type: 'update', version: 'v9.9.9', url: 'https://github.com/okba-bouziane/pitoo/releases/tag/v9.9.9', canInstall: true })
   await expect(page.locator('.update-btn')).toHaveText('Update to 9.9.9')
   await send({ type: 'update-progress', percent: 42 })
   await expect(page.locator('.update-btn')).toHaveText('Downloading 42%')
@@ -498,20 +498,8 @@ test('offers an update, shows the download, then offers to restart', async () =>
   await expect(page.locator('.update-btn')).toHaveText('Restart to update')
   await page.getByRole('button', { name: 'Settings' }).click()
   await page.locator('.modal-nav button', { hasText: 'Editor' }).click()
-  await expect(page.locator('.setting-row', { hasText: 'Check now' })).toContainText(/Anvil \d+\.\d+\.\d+/)
+  await expect(page.locator('.setting-row', { hasText: 'Check now' })).toContainText(/Pitoo \d+\.\d+\.\d+/)
   await page.getByRole('button', { name: 'Close', exact: true }).click()
-  await close()
-})
-
-test('the logo hops while the model works and rests otherwise', async () => {
-  const { page, close } = await launch(['<run_command>node -e "1"</run_command>', 'Done.'])
-  const logo = page.locator('.topbar .logo')
-  await expect(logo).not.toHaveClass(/working/)
-  await ask(page, 'run something')
-  await expect(page.locator('.approval')).toBeVisible()
-  await expect(logo).toHaveClass(/working/)
-  await page.getByRole('button', { name: "Don't run" }).click()
-  await expect(logo).not.toHaveClass(/working/)
   await close()
 })
 
@@ -827,10 +815,10 @@ test('debugs a real Node program: breakpoint, variables, watch, step, console, c
 })
 
 test('a separate window opens its own project, and HTML tags close themselves', async () => {
-  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-data-'))
+  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-data-'))
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'second-window-')))
   fs.writeFileSync(path.join(root, 'page.html'), '')
-  const app = await electron.launch({ args: ['.', '--project', root], env: { ...process.env, ANVIL_HIDDEN: '1', ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
+  const app = await electron.launch({ args: ['.', '--project', root], env: { ...process.env, PITOO_HIDDEN: '1', PITOO_DATA_DIR: data, PITOO_MEMORY_SECRETS: '1' } })
   const page = await app.firstWindow()
   await expect(page.locator('.tree-row', { hasText: 'page.html' })).toBeVisible()
   await page.locator('.tree-row', { hasText: 'page.html' }).click()
@@ -847,7 +835,7 @@ test('a separate window opens its own project, and HTML tags close themselves', 
 })
 
 test('workspace: several folders and repositories, .vscode files, menu bar, zen, outline and split terminal', async () => {
-  const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-workspace-')))
+  const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-workspace-')))
   const write = (rel: string, text: string) => { fs.mkdirSync(path.dirname(path.join(base, rel)), { recursive: true }); fs.writeFileSync(path.join(base, rel), text) }
   write('api/server.ts', 'export function start() {\n  return 1\n}\n')
   write('web/app.ts', 'export const app = 2\n')
@@ -864,17 +852,17 @@ test('workspace: several folders and repositories, .vscode files, menu bar, zen,
     run('add', '.')
     run('commit', '-qm', `first in ${repo}`)
   }
-  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-data-'))
-  const app = await electron.launch({ args: ['.', '--project', path.join(base, 'all.code-workspace')], env: { ...process.env, ANVIL_HIDDEN: '1', ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
+  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-data-'))
+  const app = await electron.launch({ args: ['.', '--project', path.join(base, 'all.code-workspace')], env: { ...process.env, PITOO_HIDDEN: '1', PITOO_DATA_DIR: data, PITOO_MEMORY_SECRETS: '1' } })
   const page = await app.firstWindow()
-  const menu = (id: string) => app.evaluate(({ BrowserWindow }, value) => BrowserWindow.getAllWindows()[0].webContents.send('anvil:event', { type: 'menu', id: value }), id)
+  const menu = (id: string) => app.evaluate(({ BrowserWindow }, value) => BrowserWindow.getAllWindows()[0].webContents.send('pitoo:event', { type: 'menu', id: value }), id)
 
   // Only the chosen folders are there, named as the workspace.
   await expect(page.locator('.tree-row', { hasText: 'api' })).toBeVisible()
   await expect(page.locator('.tree-row', { hasText: 'web' })).toBeVisible()
   await expect(page.locator('.tree-row', { hasText: 'private' })).toHaveCount(0)
   await expect(page.locator('.project')).toHaveText('all')
-  expect(await page.evaluate(() => window.anvil.readFile('private/secret.txt').then(() => 'read', () => 'refused'))).toBe('refused')
+  expect(await page.evaluate(() => window.pitoo.readFile('private/secret.txt').then(() => 'read', () => 'refused'))).toBe('refused')
 
   // The real menu bar is there, and its choices work.
   const labels = await app.evaluate(({ Menu }) => Menu.getApplicationMenu()!.items.map((i) => i.label))
@@ -945,10 +933,10 @@ test('open tabs come back after a restart', async () => {
   const first = await launch([])
   await first.page.locator('.tree-row', { hasText: 'notes.txt' }).click()
   await expect(first.page.locator('.tab.active')).toContainText('notes.txt')
-  const data = (await first.app.evaluate(() => process.env.ANVIL_DATA_DIR))!
+  const data = (await first.app.evaluate(() => process.env.PITOO_DATA_DIR))!
   await first.page.waitForTimeout(200)
   await first.app.close()
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, ANVIL_HIDDEN: '1', ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, PITOO_HIDDEN: '1', PITOO_DATA_DIR: data, PITOO_MEMORY_SECRETS: '1' } })
   const page = await app.firstWindow()
   await expect(page.locator('.tab.active')).toContainText('notes.txt', { timeout: 8000 })
   await app.close()
@@ -988,19 +976,20 @@ test('the agent cannot read protected files, and is told why', async () => {
 })
 
 test('unsaved edits come back after the app stops without saving', async () => {
-  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-data-'))
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-proj-')))
+  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-data-'))
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-proj-')))
   fs.writeFileSync(path.join(root, 'notes.txt'), 'first\n')
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ provider: 'local', lastProject: root, editor: { ...DEFAULT_EDITOR, autoSave: false } }))
-  const env = { ...process.env, ANVIL_HIDDEN: '1', ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' }
+  const env = { ...process.env, PITOO_HIDDEN: '1', PITOO_DATA_DIR: data, PITOO_MEMORY_SECRETS: '1' }
   let app = await electron.launch({ args: ['.'], env })
   let page = await app.firstWindow()
   await page.locator('.tree-row', { hasText: 'notes.txt' }).click()
   await page.locator('.monaco-editor').first().click()
   await page.keyboard.type('EDITED ')
   await page.waitForTimeout(1800)
-  // Skips the unsaved-work warning. Nothing saves on the way out, so this leaves the same state a crash does.
-  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.on('will-prevent-unload', (e) => e.preventDefault()))
+  // Destroying the window skips the unsaved-work warning and saves nothing, the same state a crash leaves.
+  await expect.poll(() => fs.existsSync(path.join(data, 'recovery'))).toBe(true)
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].destroy())
   await app.close()
   app = await electron.launch({ args: ['.'], env })
   page = await app.firstWindow()
@@ -1008,6 +997,7 @@ test('unsaved edits come back after the app stops without saving', async () => {
   expect(fs.readFileSync(path.join(root, 'notes.txt'), 'utf8')).toBe('first\n')
   await page.getByRole('button', { name: 'Restore' }).click()
   await expect(page.locator('.view-lines').first()).toContainText('EDITED')
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].destroy())
   await app.close()
 })
 
@@ -1054,4 +1044,22 @@ test('Go to File finds a file by scattered letters', async () => {
   await page.locator('#quick-open').fill('ucard')
   await expect(page.locator('.palette')).toContainText('user-card.tsx')
   await close()
+})
+
+test.skip(process.platform === 'win32', 'The stand-in below is a shell script')('the Claude Code button opens the tool in the terminal, or offers the guide', async () => {
+  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-data-'))
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-proj-')))
+  const home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-home-')))
+  fs.writeFileSync(path.join(root, 'notes.txt'), 'x')
+  fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ provider: 'local', lastProject: root }))
+  // A stand-in, so this test never starts the real tool. It leaves a file behind to show it ran.
+  const bin = path.join(home, '.local', 'bin')
+  fs.mkdirSync(bin, { recursive: true })
+  fs.writeFileSync(path.join(bin, 'claude'), `#!/bin/sh\ntouch "${path.join(home, 'ran')}"\n`, { mode: 0o755 })
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, HOME: home, PITOO_HIDDEN: '1', PITOO_DATA_DIR: data, PITOO_MEMORY_SECRETS: '1' } })
+  const page = await app.firstWindow()
+  await page.locator('.claude-open').click()
+  await expect(page.locator('.xterm')).toBeVisible()
+  await expect.poll(() => fs.existsSync(path.join(home, 'ran')), { timeout: 15_000 }).toBe(true)
+  await app.close()
 })

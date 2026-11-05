@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { assetsOf, supportOf, unpackExtension } from '../src/main/extensions'
 
 let dir = ''
-beforeEach(() => { dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-ext-'))) })
+beforeEach(() => { dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-ext-'))) })
 afterEach(() => fs.rmSync(dir, { recursive: true, force: true }))
 
 const vsix = (files: Record<string, string>) => zipSync(Object.fromEntries(Object.entries(files).map(([k, v]) => [k, strToU8(v)])))

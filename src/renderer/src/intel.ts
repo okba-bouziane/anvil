@@ -2,7 +2,7 @@ import type { ImportedSnippet, IntelCompletion, IntelEdit, IntelLocation, IntelS
 import { monaco } from './monaco'
 import { relOf, store, uriOf } from './models'
 
-const api = window.anvil
+const api = window.pitoo
 const LANGUAGES = ['typescript', 'javascript']
 type Model = monaco.editor.ITextModel
 const K = monaco.languages.CompletionItemKind
@@ -85,12 +85,12 @@ function registerLintActions(): void {
           return { resource: model.uri, versionId: undefined, textEdit: { range: new monaco.Range(from.lineNumber, from.column, to.lineNumber, to.column), text: fix.text } }
         }
         const actions: monaco.languages.CodeAction[] = here.map((m) => ({ title: `Fix: ${m.rule ?? m.message}`, kind: 'quickfix', edit: { edits: [edit(m.fix!)] } }))
-        if (all.some((m) => m.fix)) actions.push({ title: 'Fix all ESLint problems in this file', kind: 'source.fixAll', command: { id: 'anvil.eslintFixAll', title: 'Fix all' } })
+        if (all.some((m) => m.fix)) actions.push({ title: 'Fix all ESLint problems in this file', kind: 'source.fixAll', command: { id: 'pitoo.eslintFixAll', title: 'Fix all' } })
         return { actions, dispose() {} }
       }
     })
   }
-  monaco.editor.registerCommand('anvil.eslintFixAll', () => {
+  monaco.editor.registerCommand('pitoo.eslintFixAll', () => {
     const model = monaco.editor.getModels().find((m) => m.isAttachedToEditor() && relOf(m.uri) === store.activePath())
     if (model) void fixAllLint(model)
   })

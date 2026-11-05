@@ -13,7 +13,7 @@ import { store } from './models'
 import { ago } from './Panels'
 import { monaco, OPTIONS } from './monaco'
 
-const api = window.anvil
+const api = window.pitoo
 const uri = (path: string, side: string) => monaco.Uri.file(`/${side}/${path}`)
 
 interface Marker {
@@ -161,7 +161,7 @@ function FileEditor({ path, revision, reveal, hidden, editorSettings, cursorStyl
     }
     const listeners = [created.onDidChangeCursorPosition(report), created.onDidChangeModel(report), created.onDidFocusEditorText(() => store.setActivePath(current.current))]
     created.addAction({
-      id: 'anvil.save',
+      id: 'pitoo.save',
       label: 'Save',
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
       run: async () => {
@@ -293,7 +293,7 @@ function FileEditor({ path, revision, reveal, hidden, editorSettings, cursorStyl
       const closing = `</${tag[1]}>`
       if (model.getLineContent(line).slice(column - 1).startsWith(closing)) return
       queueMicrotask(() => {
-        instance.executeEdits('anvil.closeTag', [{ range: new monaco.Range(line, column, line, column), text: closing }])
+        instance.executeEdits('pitoo.closeTag', [{ range: new monaco.Range(line, column, line, column), text: closing }])
         instance.setPosition({ lineNumber: line, column })
       })
     })
@@ -310,7 +310,7 @@ function FileEditor({ path, revision, reveal, hidden, editorSettings, cursorStyl
       const line = e.target.position?.lineNumber
       if (line && current.current && (e.target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN || e.target.type === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS && e.event.altKey)) debug.toggle(current.current, line)
     })
-    instance.addAction({ id: 'anvil.toggleBreakpoint', label: 'Toggle breakpoint', keybindings: [monaco.KeyCode.F9], run: () => {
+    instance.addAction({ id: 'pitoo.toggleBreakpoint', label: 'Toggle breakpoint', keybindings: [monaco.KeyCode.F9], run: () => {
       const line = instance.getPosition()?.lineNumber
       if (line && current.current) debug.toggle(current.current, line)
     } })
@@ -413,7 +413,7 @@ function FileEditor({ path, revision, reveal, hidden, editorSettings, cursorStyl
     const range = block.end < lastLine ? new monaco.Range(block.start, 1, block.end + 1, 1) : new monaco.Range(block.start, 1, block.end, model.getLineMaxColumn(block.end))
     const text = kept.length ? kept.join('\n') + (block.end < lastLine ? '\n' : '') : ''
     instance.pushUndoStop()
-    instance.executeEdits('anvil.conflict', [{ range, text }])
+    instance.executeEdits('pitoo.conflict', [{ range, text }])
     instance.pushUndoStop()
     instance.focus()
   }

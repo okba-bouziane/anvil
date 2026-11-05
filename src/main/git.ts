@@ -305,7 +305,7 @@ export function applyPatch(root: string, patch: string, target: 'index' | 'tree'
   })
 }
 
-/* Pull requests go through GitHub's own `gh` tool, so Anvil never sees your GitHub password or token. */
+/* Pull requests go through GitHub's own `gh` tool, so Pitoo never sees your GitHub password or token. */
 
 function gh(root: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {

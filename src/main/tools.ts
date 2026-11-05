@@ -191,7 +191,7 @@ export function globToRegExp(glob: string): RegExp {
 /** Files the agent never gets to see or change, because they usually hold passwords and keys. */
 const SECRET_FILES = ['.env', '.env.*', '*.pem', '*.key', '*.p12', '*.pfx', '*.keystore', 'id_rsa', 'id_rsa.*', 'id_ed25519', 'id_ed25519.*', '.ssh/**', '**/.ssh/**', '.aws/**', '**/.aws/**', '.npmrc', '.netrc', '.pypirc', 'credentials.json', 'secrets.json', 'secrets.yaml', 'secrets.yml']
 const NOT_SECRET = ['.env.example', '.env.sample', '.env.template', '.env.dist']
-export const IGNORE_FILE = '.sindanignore'
+export const IGNORE_FILE = '.pitooignore'
 const ignoreCache = new Map<string, { mtime: number; lines: string[] }>()
 
 function ignoreLines(root: string): string[] {

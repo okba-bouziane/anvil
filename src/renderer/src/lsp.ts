@@ -1,7 +1,7 @@
 import { monaco } from './monaco'
 import { flushLspChange, lspKindOf, relOf, store, uriOf, type LspKind } from './models'
 
-const api = window.anvil
+const api = window.pitoo
 
 type Pos = { line: number; character: number }
 type LRange = { start: Pos; end: Pos }

@@ -192,8 +192,8 @@ export class Debugger {
       previous(event, body)
     }
     session.capabilities = await channel.request('initialize', {
-      clientID: 'anvil',
-      clientName: 'Anvil',
+      clientID: 'pitoo',
+      clientName: 'Pitoo',
       adapterID: String(args.type ?? 'pwa-node'),
       linesStartAt1: true,
       columnsStartAt1: true,

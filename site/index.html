@@ -3,27 +3,36 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Anvil, the code editor that works with the Wi-Fi off</title>
+<title>Pitoo: a free, offline-first code editor with optional local AI</title>
 <meta name="description" content="A free, open source code editor. Use it with no AI, with a model on your own computer, or with your own API key. For Mac, Windows and Linux.">
-<meta property="og:title" content="Anvil, the code editor that works with the Wi-Fi off">
-<meta property="og:description" content="A free, open source code editor. Use it with no AI, with a model on your own computer, or with your own API key.">
-<meta property="og:image" content="/img/review.png">
+<link rel="canonical" href="https://pitoo.vercel.app/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Pitoo">
+<meta property="og:title" content="Pitoo: a free, offline-first code editor with optional local AI">
+<meta property="og:description" content="A free, open source code editor. Use it with no AI, with a model on your own computer, or with your own API key. For Mac, Windows and Linux.">
+<meta property="og:url" content="https://pitoo.vercel.app/">
+<meta property="og:image" content="https://pitoo.vercel.app/img/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#131211">
 <link rel="icon" href="/img/icon.png">
 <link rel="preload" href="/fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" as="image" href="/img/live.webp" imagesrcset="/img/live-1000.webp 1000w, /img/live.webp 2000w" imagesizes="(max-width:700px) 100vw, 1100px">
 <link rel="stylesheet" href="/style.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "Pitoo", "alternateName": "Anvil editor", "applicationCategory": "DeveloperApplication", "operatingSystem": "macOS (Apple Silicon), Windows, Linux", "softwareVersion": "0.4.0", "license": "https://opensource.org/licenses/MIT", "url": "https://pitoo.vercel.app", "downloadUrl": "https://pitoo.vercel.app/#download", "isAccessibleForFree": true, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "author": {"@type": "Person", "name": "Okba Bouziane", "url": "https://devokba.vercel.app"}, "codeRepository": "https://github.com/okba-bouziane/pitoo", "description": "A free, open source desktop code editor that works with no internet, no account and no AI. Add a local model or your own API key if you want an agent."}</script>
 </head>
 <body>
 <div class="progress" id="progress" aria-hidden="true"></div>
 
 <header class="nav">
-  <a class="brand" href="#top" aria-label="Anvil home"><span class="mark" data-logo="hop"></span><span class="word">Anvil</span></a>
+  <a class="brand" href="#top" aria-label="Pitoo home"><span class="word">Pitoo</span><span class="cat-peek" aria-hidden="true"></span></a>
   <nav aria-label="Main">
     <a href="#features">Features</a>
     <a href="#ways">AI options</a>
     <a href="/docs">Docs</a>
     <a href="/faq">FAQ</a>
-    <a href="https://github.com/okba-bouziane/anvil">GitHub</a>
+    <a href="https://github.com/okba-bouziane/pitoo">GitHub</a>
   </nav>
   <a class="btn primary small" href="#download">Download</a>
 </header>
@@ -37,8 +46,8 @@
     <h1><span class="line"><span>The code editor</span></span><span class="line"><span>that works with</span></span><span class="line"><span>the Wi-Fi off</span></span></h1>
     <p>Free and open source. Code with no AI at all, with a model on your own computer, or with your own API key.</p>
     <div class="cta">
-      <a class="btn primary large" id="hero-download" href="#download">Download Anvil</a>
-      <a class="btn large" href="https://github.com/okba-bouziane/anvil">View the code</a>
+      <a class="btn primary large" id="hero-download" href="#download">Download Pitoo</a>
+      <a class="btn large" href="https://github.com/okba-bouziane/pitoo">View the code</a>
     </div>
   </div>
 </section>
@@ -78,7 +87,7 @@
 
 <section class="story" id="story">
   <div class="story-head">
-    <h2>Models make mistakes. Anvil makes them cheap to undo.</h2>
+    <h2>Models make mistakes. Pitoo makes them cheap to undo.</h2>
   </div>
   <div class="story-grid">
     <div class="story-steps" id="story-steps">
@@ -93,7 +102,7 @@
       </article>
       <article class="story-step" data-shot="2">
         <h3>It checks its own work</h3>
-        <p>After each edit, your project's TypeScript runs. Anvil adds missing imports itself and sends other errors back to the model to fix.</p>
+        <p>After each edit, your project's TypeScript runs. Pitoo adds missing imports itself and sends other errors back to the model to fix.</p>
       </article>
       <article class="story-step" data-shot="3">
         <h3>You stay in charge</h3>
@@ -102,10 +111,10 @@
     </div>
     <div class="story-stage">
       <div class="story-frame">
-        <img class="shot on at-right" src="/img/live.png" width="2000" height="1217" alt="Code appearing live in Anvil's chat as the model writes it">
-        <img class="shot" src="/img/review.png" width="2000" height="1217" loading="lazy" alt="A change with Keep and Undo buttons on the block">
-        <img class="shot" src="/img/check.png" width="2000" height="1217" loading="lazy" alt="A TypeScript error underlined in the editor, with the Problems panel open">
-        <img class="shot at-right" src="/img/approve.png" width="2000" height="1217" loading="lazy" alt="Anvil asking before it runs a command">
+        <img class="shot on at-right" src="/img/live.webp" srcset="/img/live-1000.webp 1000w, /img/live.webp 2000w" sizes="(max-width:700px) 100vw, 1100px" width="2000" height="1217" alt="Code appearing live in Pitoo's chat as the model writes it">
+        <img class="shot" src="/img/review.webp" srcset="/img/review-1000.webp 1000w, /img/review.webp 2000w" sizes="(max-width:700px) 100vw, 1100px" width="2000" height="1217" loading="lazy" alt="A change with Keep and Undo buttons on the block">
+        <img class="shot" src="/img/check.webp" srcset="/img/check-1000.webp 1000w, /img/check.webp 2000w" sizes="(max-width:700px) 100vw, 1100px" width="2000" height="1217" loading="lazy" alt="A TypeScript error underlined in the editor, with the Problems panel open">
+        <img class="shot at-right" src="/img/approve.webp" srcset="/img/approve-1000.webp 1000w, /img/approve.webp 2000w" sizes="(max-width:700px) 100vw, 1100px" width="2000" height="1217" loading="lazy" alt="Pitoo asking before it runs a command">
       </div>
     </div>
   </div>
@@ -124,7 +133,7 @@
       <ul><li>Keep current, incoming or both on each conflict</li><li>Cherry-pick, revert and reset from the commit tree</li><li>Who changed each line, and why</li><li>Pull requests through GitHub's <code>gh</code></li></ul>
       <a class="more" href="/docs#git">Git guide</a>
     </div>
-    <div class="feature-shot"><img src="/img/git.png" width="2000" height="1217" loading="lazy" alt="The Git panel beside a commit tree of every branch"></div>
+    <div class="feature-shot"><img src="/img/git.webp" srcset="/img/git-1000.webp 1000w, /img/git.webp 2000w" sizes="(max-width:700px) 100vw, 1100px" width="2000" height="1217" loading="lazy" alt="The Git panel beside a commit tree of every branch"></div>
   </article>
 
   <article class="feature flip">
@@ -134,7 +143,7 @@
       <ul><li>Debug any npm script, with source maps</li><li>Conditional breakpoints</li><li>Reads your <code>launch.json</code></li></ul>
       <a class="more" href="/docs#debug">Debugging guide</a>
     </div>
-    <div class="feature-shot"><img src="/img/debug.png" width="2000" height="1217" loading="lazy" alt="A program paused on a breakpoint, with the call stack and variables"></div>
+    <div class="feature-shot"><img src="/img/debug.webp" srcset="/img/debug-1000.webp 1000w, /img/debug.webp 2000w" sizes="(max-width:700px) 100vw, 1100px" width="2000" height="1217" loading="lazy" alt="A program paused on a breakpoint, with the call stack and variables"></div>
   </article>
 
   <article class="feature">
@@ -144,17 +153,17 @@
       <ul><li>TypeScript and JavaScript across your whole project</li><li>Python with Pyright</li><li>Angular templates with the Angular language server</li><li>Your project's own ESLint and Prettier</li></ul>
       <a class="more" href="/docs#code-help">What's covered</a>
     </div>
-    <div class="feature-shot"><img src="/img/check.png" width="2000" height="1217" loading="lazy" alt="A type error underlined in the editor, with the Problems panel open"></div>
+    <div class="feature-shot"><img src="/img/check.webp" srcset="/img/check-1000.webp 1000w, /img/check.webp 2000w" sizes="(max-width:700px) 100vw, 1100px" width="2000" height="1217" loading="lazy" alt="A type error underlined in the editor, with the Problems panel open"></div>
   </article>
 
   <article class="feature flip">
     <div class="feature-copy">
       <h3>Come over from VS Code</h3>
-      <p>Bring your settings, snippets and themes with one button. Anvil reads your <code>.vscode</code> files and <code>.code-workspace</code> workspaces, and installs themes and snippets from Open VSX.</p>
+      <p>Bring your settings, snippets and themes with one button. Pitoo reads your <code>.vscode</code> files and <code>.code-workspace</code> workspaces, and installs themes and snippets from Open VSX.</p>
       <ul><li>Workspaces with several folders and repositories</li><li>New windows and side-by-side editing</li><li>Program extensions don't run yet, and each one is labeled</li></ul>
       <a class="more" href="/docs#vscode">Moving over</a>
     </div>
-    <div class="feature-shot"><img src="/img/extensions.png" width="2000" height="1217" loading="lazy" alt="The Extensions panel, showing what each extension can do in Anvil"></div>
+    <div class="feature-shot"><img src="/img/extensions.webp" srcset="/img/extensions-1000.webp 1000w, /img/extensions.webp 2000w" sizes="(max-width:700px) 100vw, 1100px" width="2000" height="1217" loading="lazy" alt="The Extensions panel, showing what each extension can do in Pitoo"></div>
   </article>
 
   <div class="rest">
@@ -170,7 +179,7 @@
     <h2>AI is optional. Pick how much.</h2>
     <p>Switch whenever you like. The app always tells you whether your code stays on your computer.</p>
   </div>
-  <div class="ways-table" role="table" aria-label="Ways to use Anvil">
+  <div class="ways-table" role="table" aria-label="Ways to use Pitoo">
     <div class="way-row head" role="row"><span role="columnheader"></span><b role="columnheader">No AI</b><b role="columnheader">On your computer</b><b role="columnheader">Your API key</b></div>
     <div class="way-row" role="row"><span role="rowheader">What you get</span><span role="cell" data-way="No AI">The editor, errors, completion, terminal, Git and search</span><span role="cell" data-way="On your computer">MLX on Apple Silicon, or Ollama and LM Studio. Good for single files, small features and tests</span><span role="cell" data-way="Your API key">Anthropic, OpenAI or any OpenAI-style server, for the big jobs</span></div>
     <div class="way-row" role="row"><span role="rowheader">Needs</span><span role="cell" data-way="No AI">Just the app</span><span role="cell" data-way="On your computer">About 6 GB of disk and 16 GB of memory</span><span role="cell" data-way="Your API key">Your own key, encrypted in your system's secure storage</span></div>
@@ -208,39 +217,40 @@
 </section>
 
 <section class="download" id="download">
-  <h2>Download Anvil</h2>
+  <h2>Download Pitoo</h2>
   <p class="download-sub">Free, with no account. Pick your system.</p>
   <div class="oses" id="oses">
     <div class="os" data-os="mac">
       <h3>Mac</h3>
-      <div class="os-text"><p>For Apple Silicon. Apple hasn't notarized it yet, so run this once after moving it to Applications:</p><pre class="cmd">xattr -cr /Applications/Anvil.app</pre></div>
-      <a class="btn" href="https://github.com/okba-bouziane/anvil/releases/latest/download/Anvil-mac-arm64.zip">Download for Mac</a>
+      <div class="os-text"><p>For Apple Silicon. Apple hasn't notarized it yet, so run this once after moving it to Applications:</p><pre class="cmd">xattr -cr /Applications/Pitoo.app</pre></div>
+      <a class="btn" href="https://github.com/okba-bouziane/pitoo/releases/latest/download/Pitoo-mac-arm64.zip">Download for Mac</a>
     </div>
     <div class="os" data-os="windows">
       <h3>Windows</h3>
       <div class="os-text"><p>For 64-bit Windows. The installer isn't signed yet, so SmartScreen may warn you the first time.</p></div>
-      <a class="btn" href="https://github.com/okba-bouziane/anvil/releases/latest/download/Anvil-win-x64.exe">Download for Windows</a>
+      <a class="btn" href="https://github.com/okba-bouziane/pitoo/releases/latest/download/Pitoo-win-x64.exe">Download for Windows</a>
     </div>
     <div class="os" data-os="linux">
       <h3>Linux</h3>
-      <div class="os-text"><p>For 64-bit Linux, as an AppImage that runs without installing. Or get the <a href="https://github.com/okba-bouziane/anvil/releases/latest/download/Anvil-linux-amd64.deb">.deb package</a>.</p></div>
-      <a class="btn" href="https://github.com/okba-bouziane/anvil/releases/latest/download/Anvil-linux-x86_64.AppImage">Download AppImage</a>
+      <div class="os-text"><p>For 64-bit Linux, as an AppImage that runs without installing. Or get the <a href="https://github.com/okba-bouziane/pitoo/releases/latest/download/Pitoo-linux-amd64.deb">.deb package</a>.</p></div>
+      <a class="btn" href="https://github.com/okba-bouziane/pitoo/releases/latest/download/Pitoo-linux-x86_64.AppImage">Download AppImage</a>
     </div>
   </div>
-  <p class="source">Prefer to <a href="https://github.com/okba-bouziane/anvil#or-build-it-yourself">build it from source</a>? See all files on <a href="https://github.com/okba-bouziane/anvil/releases/latest">the releases page</a>.</p>
+  <p class="source">Prefer to <a href="https://github.com/okba-bouziane/pitoo#or-build-it-yourself">build it from source</a>? See all files on <a href="https://github.com/okba-bouziane/pitoo/releases/latest">the releases page</a>.</p>
 </section>
 </main>
 
 <footer>
-  <a class="brand" href="#top"><span class="mark" data-logo></span>Anvil</a>
+  <a class="brand" href="#top"><span class="mark" data-logo></span>Pitoo</a>
   <span>Open source under the MIT license.</span>
   <a href="/docs">Docs</a>
   <a href="/faq">FAQ</a>
-  <a href="https://github.com/okba-bouziane/anvil">GitHub</a>
-  <a href="https://github.com/okba-bouziane/anvil/issues">Report a problem</a>
+  <a href="https://github.com/okba-bouziane/pitoo">GitHub</a>
+  <a href="https://github.com/okba-bouziane/pitoo/issues">Report a problem</a>
   <span class="right">Made by <a href="https://devokba.vercel.app">Okba Bouziane</a></span>
 </footer>
 
+<script src="/cat.js"></script>
 <script src="/main.js"></script>
 </body>
 </html>

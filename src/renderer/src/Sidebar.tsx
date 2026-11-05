@@ -5,7 +5,7 @@ import { DebugPanel } from './DebugPanel'
 import { ExtensionsPanel } from './ExtensionsPanel'
 import { GitPanel, ScriptsPanel, SearchPanel } from './Panels'
 
-const api = window.anvil
+const api = window.pitoo
 
 type Edit = { kind: 'file' | 'folder'; parent: string } | { kind: 'rename'; path: string; isDir: boolean }
 
@@ -77,11 +77,11 @@ function Dir(props: DirProps) {
                 onClick={() => (e.isDir ? setOpen({ ...open, [e.path]: !open[e.path] }) : onOpen(e.path))}
                 onContextMenu={(ev) => { ev.preventDefault(); onMenu(ev.clientX, ev.clientY, e) }}
                 draggable
-                onDragStart={(ev) => ev.dataTransfer.setData('anvil/path', e.path)}
+                onDragStart={(ev) => ev.dataTransfer.setData('pitoo/path', e.path)}
                 onDragOver={(ev) => { if (e.isDir) ev.preventDefault() }}
                 onDrop={(ev) => {
                   ev.preventDefault()
-                  const from = ev.dataTransfer.getData('anvil/path')
+                  const from = ev.dataTransfer.getData('pitoo/path')
                   if (!from || !e.isDir || from === e.path || e.path.startsWith(`${from}/`) || parentOf(from) === e.path) return
                   onMove(from, join(e.path, from.split('/').pop() ?? from))
                 }}

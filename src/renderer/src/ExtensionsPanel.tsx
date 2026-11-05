@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import type { ExtensionInfo, ImportedAssets, Settings } from '../../shared/types'
 import { Icon } from './Icon'
 
-const api = window.anvil
+const api = window.pitoo
 
-const LABEL = { full: 'Works in Anvil', partial: 'Partly works', none: "Can't run yet" }
+const LABEL = { full: 'Works in Pitoo', partial: 'Partly works', none: "Can't run yet" }
 const count = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${Math.round(n / 1000)}K` : String(n))
 
 function Row({ item, installed, busy, themes, activeTheme, onInstall, onRemove, onTheme }: {

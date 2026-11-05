@@ -6,7 +6,7 @@ import type { ExtensionInfo, ExtensionSupport, ImportedAssets } from '../shared/
 import { readSnippets, readTheme } from './vscode-import'
 
 /**
- * Extensions come from Open VSX, the open registry Kiro and others use. Anvil keeps only an extension's data files:
+ * Extensions come from Open VSX, the open registry Kiro and others use. Pitoo keeps only an extension's data files:
  * its code is never unpacked and never runs. What a program-style extension does therefore isn't available yet.
  */
 
@@ -22,14 +22,14 @@ interface Manifest {
   contributes?: { themes?: { path?: string; label?: string; uiTheme?: string; id?: string }[]; snippets?: { path?: string; language?: string }[]; grammars?: unknown[]; iconThemes?: unknown[] }
 }
 
-/** What Anvil can use from an extension, judged from its manifest alone. */
+/** What Pitoo can use from an extension, judged from its manifest alone. */
 export function supportOf(manifest: Manifest): ExtensionSupport {
   const themes = manifest.contributes?.themes?.length ?? 0
   const snippets = manifest.contributes?.snippets?.length ?? 0
   const parts = [themes ? 'color themes' : '', snippets ? 'snippets' : ''].filter(Boolean)
   const program = !!(manifest.main || manifest.browser)
-  if (!parts.length) return { level: 'none', note: program ? 'This extension is a program, and Anvil can\'t run those yet.' : 'It adds nothing Anvil can use yet.' }
-  if (program) return { level: 'partial', note: `Its ${parts.join(' and ')} work. The rest of it is a program, which Anvil can't run yet.` }
+  if (!parts.length) return { level: 'none', note: program ? 'This extension is a program, and Pitoo can\'t run those yet.' : 'It adds nothing Pitoo can use yet.' }
+  if (program) return { level: 'partial', note: `Its ${parts.join(' and ')} work. The rest of it is a program, which Pitoo can't run yet.` }
   return { level: 'full', note: `Adds ${parts.join(' and ')}.` }
 }
 
@@ -155,7 +155,7 @@ export class Extensions {
         version: detail.version,
         downloads: e.downloadCount ?? 0,
         icon: await this.iconOf(e.files?.icon),
-        support: manifest ? supportOf(manifest) : { level: 'none' as const, note: 'Anvil couldn\'t read what this extension contains.' }
+        support: manifest ? supportOf(manifest) : { level: 'none' as const, note: 'Pitoo couldn\'t read what this extension contains.' }
       }
     }))
   }

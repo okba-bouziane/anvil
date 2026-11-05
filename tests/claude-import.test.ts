@@ -14,7 +14,7 @@ const write = (folder: string, name: string, lines: unknown[]) => {
 const user = (content: unknown, extra = {}) => ({ type: 'user', cwd: '/work/shop', message: { role: 'user', content }, ...extra })
 const assistant = (content: unknown, extra = {}) => ({ type: 'assistant', message: { role: 'assistant', content }, ...extra })
 
-beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-claude-import-')) })
+beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-claude-import-')) })
 
 describe('importing Claude Code sessions', () => {
   it('lists sessions with their custom title, or the first thing the person wrote', () => {

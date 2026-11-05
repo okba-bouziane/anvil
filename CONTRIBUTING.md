@@ -1,4 +1,4 @@
-# Contributing to Anvil
+# Contributing to Pitoo
 
 Bug reports and pull requests are welcome.
 

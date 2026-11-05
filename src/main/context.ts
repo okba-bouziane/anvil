@@ -24,7 +24,7 @@ export function projectTree(root: string): string {
 
 /** Project instructions the user keeps in the repository. */
 function projectRules(root: string): string {
-  for (const name of ['ANVIL.md', 'AGENTS.md']) {
+  for (const name of ['PITOO.md', 'ANVIL.md', 'AGENTS.md']) {
     try {
       const text = fs.readFileSync(path.join(root, name), 'utf8').slice(0, 8000).trim()
       if (text) return `\n\nProject rules from ${name}:\n${text}`
@@ -35,7 +35,7 @@ function projectRules(root: string): string {
   return ''
 }
 
-export const systemPrompt = (root: string): string => `You are Anvil, a coding assistant working in a project on the user's Mac.
+export const systemPrompt = (root: string): string => `You are Pitoo, a coding assistant working in a project on the user's Mac.
 Project root: ${path.basename(root)}. All paths are relative to it.
 The computer runs ${OS_NAME}, so write commands for that system.
 

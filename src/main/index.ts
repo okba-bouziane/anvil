@@ -15,6 +15,7 @@ import { clientFor, effectiveSettings, listModels, localModels } from './provide
 import { Secrets } from './secrets'
 import { parseVscodeKeybindings, toAccelerator } from '../shared/keybindings'
 import { claudeCommand, findClaude } from './claude-code'
+import { migrateOldData } from './migrate'
 import { claudeFolderFor, claudeSessionFile, listClaudeSessions, readClaudeSession } from './claude-import'
 import { loadSession, saveSession, type Chat } from './session'
 import { canRunMlx } from './platform'
@@ -34,7 +35,7 @@ import { checkFiles } from './tscheck'
 // wants every bit of its speed can leave the chip to the model. This has to be decided before the app starts.
 function savedGpuChoice(): boolean {
   try {
-    const dir = process.env.ANVIL_DATA_DIR ?? app.getPath('userData')
+    const dir = process.env.PITOO_DATA_DIR ?? app.getPath('userData')
     return (JSON.parse(fs.readFileSync(path.join(dir, 'settings.json'), 'utf8')) as { leaveGpuToModel?: boolean }).leaveGpuToModel === true
   } catch {
     return false
@@ -54,22 +55,22 @@ function openInNewWindow(folder: string): void {
   spawn(process.execPath, args, { detached: true, stdio: 'ignore', env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined } }).unref()
 }
 
-/** Adds an `anvil` command for the terminal. It goes in your own ~/.local/bin, so it needs no password. */
+/** Adds an `pitoo` command for the terminal. It goes in your own ~/.local/bin, so it needs no password. */
 function installCommand(): string {
-  if (process.platform === 'win32') throw new Error('The anvil command is only for Mac and Linux for now.')
+  if (process.platform === 'win32') throw new Error('The pitoo command is only for Mac and Linux for now.')
   const dir = path.join(os.homedir(), '.local/bin')
-  const file = path.join(dir, 'anvil')
+  const file = path.join(dir, 'pitoo')
   const launch = app.isPackaged ? `"${process.execPath}"` : `"${process.execPath}" "${app.getAppPath()}"`
   fs.mkdirSync(dir, { recursive: true })
-  fs.writeFileSync(file, `#!/bin/sh\n# Opens a folder in Anvil.\nfolder=$(cd "\${1:-.}" && pwd) || exit 1\nnohup ${launch} --project "$folder" >/dev/null 2>&1 &\n`, { mode: 0o755 })
+  fs.writeFileSync(file, `#!/bin/sh\n# Opens a folder in Pitoo.\nfolder=$(cd "\${1:-.}" && pwd) || exit 1\nnohup ${launch} --project "$folder" >/dev/null 2>&1 &\n`, { mode: 0o755 })
   const onPath = (process.env.PATH ?? '').split(path.delimiter).includes(dir)
-  return onPath ? 'Installed. Run "anvil ." in any folder.' : `Installed to ${file}. Add ${dir} to your PATH, then run "anvil ." in any folder.`
+  return onPath ? 'Installed. Run "pitoo ." in any folder.' : `Installed to ${file}. Add ${dir} to your PATH, then run "pitoo ." in any folder.`
 }
 
 let win: BrowserWindow | null = null
 let settings: Settings = { ...DEFAULT_SETTINGS }
 let secrets: Secrets
-const terminals = new Terminals((event) => win?.webContents.send('anvil:terminal', event))
+const terminals = new Terminals((event) => win?.webContents.send('pitoo:terminal', event))
 
 interface Project {
   root: string
@@ -338,7 +339,7 @@ function buildMenu(): void {
     ] },
     { label: 'Run', submenu: [
       item('Run and Debug', 'debug', 'F5'),
-      item('Toggle Breakpoint', 'editor:anvil.toggleBreakpoint', 'F9'),
+      item('Toggle Breakpoint', 'editor:pitoo.toggleBreakpoint', 'F9'),
       { type: 'separator' },
       item('Run Task…', 'tasks')
     ] },
@@ -349,7 +350,7 @@ function buildMenu(): void {
     ] },
     { role: 'windowMenu' },
     { role: 'help', submenu: [
-      { label: 'Report a Problem', click: () => void shell.openExternal('https://github.com/okba-bouziane/anvil/issues') },
+      { label: 'Report a Problem', click: () => void shell.openExternal('https://github.com/okba-bouziane/pitoo/issues') },
       { label: 'Check for Updates', click: run('check-update') },
       { type: 'separator' },
       { role: 'toggleDevTools' }
@@ -367,7 +368,7 @@ const canInstall = (r: Release) => app.isPackaged && !!assetFor(r.assets, machin
 /** Quiet when offline, unless you asked, and off if you turned it off. */
 async function checkForUpdate(asked = false): Promise<{ current: string; latest: string | null }> {
   const current = app.getVersion()
-  if (!asked && (!settings.checkUpdates || process.env.ANVIL_DATA_DIR)) return { current, latest: null }
+  if (!asked && (!settings.checkUpdates || process.env.PITOO_DATA_DIR)) return { current, latest: null }
   try {
     const found = await latestRelease()
     if (found && newer(found.version, current)) {
@@ -386,17 +387,24 @@ async function checkForUpdate(asked = false): Promise<{ current: string; latest:
 async function downloadUpdate(): Promise<void> {
   const asset = release && assetFor(release.assets, machine())
   if (!asset) throw new Error('There is no installer for this computer. Open the release page instead.')
-  const dir = fs.mkdtempSync(path.join(app.getPath('temp'), 'anvil-update-'))
+  const dir = fs.mkdtempSync(path.join(app.getPath('temp'), 'pitoo-update-'))
   const file = await downloadAsset(asset, dir, (percent) => send({ type: 'update-progress', percent }))
   installer = prepareInstall(file, machine(), process.execPath, process.pid, (f) => void shell.openPath(f))
   send({ type: 'update-ready', label: installer.label })
 }
 
-const dataDir = () => process.env.ANVIL_DATA_DIR ?? app.getPath('userData')
+const dataDir = () => process.env.PITOO_DATA_DIR ?? app.getPath('userData')
 const settingsFile = () => path.join(dataDir(), 'settings.json')
 const sessionsDir = () => path.join(dataDir(), 'sessions')
 
 function loadSettings(): void {
+  if (!process.env.PITOO_DATA_DIR) {
+    try {
+      migrateOldData(path.join(app.getPath('appData'), 'Anvil'), app.getPath('userData'))
+    } catch (err) {
+      logProblem('Moving data from Anvil', err)
+    }
+  }
   let saved: Partial<Settings> = {}
   try {
     saved = JSON.parse(fs.readFileSync(settingsFile(), 'utf8'))
@@ -430,13 +438,13 @@ let lastStats = 0
 function flushText(): void {
   if (textTimer) clearTimeout(textTimer)
   textTimer = null
-  for (const [id, delta] of pendingText) win?.webContents.send('anvil:event', { type: 'text-delta', id, delta })
+  for (const [id, delta] of pendingText) win?.webContents.send('pitoo:event', { type: 'text-delta', id, delta })
   pendingText.clear()
 }
 
 function send(event: AgentEvent): void {
   flushText()
-  win?.webContents.send('anvil:event', event)
+  win?.webContents.send('pitoo:event', event)
 }
 
 function queueText(id: string, delta: string): void {
@@ -653,7 +661,7 @@ function activate(p: Project, chat: Chat): ProjectState {
 
 /** Deleted files go to the Trash, so they can be recovered. */
 function trash(file: string): Promise<void> {
-  if (process.env.ANVIL_DATA_DIR) {
+  if (process.env.PITOO_DATA_DIR) {
     // Tests use throwaway folders and should not fill the real Trash.
     fs.rmSync(file, { recursive: true, force: true })
     return Promise.resolve()
@@ -663,7 +671,7 @@ function trash(file: string): Promise<void> {
 
 function handlers() {
   const handle = (name: string, fn: (...args: any[]) => unknown) =>
-    ipcMain.handle(`anvil:${name}`, (_event, ...args) => fn(...args))
+    ipcMain.handle(`pitoo:${name}`, (_event, ...args) => fn(...args))
   const mutate = (fn: (p: Project) => void) => {
     fn(need())
     sendChanges()
@@ -1072,7 +1080,7 @@ function handlers() {
     if (fs.statSync(file).size > 30_000_000) throw new Error('That image is too large to preview.')
     const type: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.ico': 'image/x-icon', '.bmp': 'image/bmp', '.svg': 'image/svg+xml' }
     const mime = type[path.extname(file).toLowerCase()]
-    if (!mime) throw new Error('Anvil can\'t preview this kind of file.')
+    if (!mime) throw new Error('Pitoo can\'t preview this kind of file.')
     return `data:${mime};base64,${fs.readFileSync(file).toString('base64')}`
   })
   handle('gitHead', (rel: string) => {
@@ -1089,7 +1097,7 @@ function handlers() {
     app.quit()
   })
   handle('openRelease', (url: string) => {
-    if (url.startsWith('https://github.com/okba-bouziane/anvil/')) void shell.openExternal(url)
+    if (url.startsWith('https://github.com/okba-bouziane/pitoo/')) void shell.openExternal(url)
   })
   handle('importVscode', () => {
     const { assets, summary, settingsPatch } = importFromVscode(vscodePaths())
@@ -1331,17 +1339,17 @@ function handlers() {
 }
 
 function createWindow(): void {
-  const saved = process.env.ANVIL_DATA_DIR || !settings.windowBounds?.width ? null : settings.windowBounds
+  const saved = process.env.PITOO_DATA_DIR || !settings.windowBounds?.width ? null : settings.windowBounds
   win = new BrowserWindow({
     // Tests run hidden, so windows don't appear over whatever the person is doing.
-    show: !process.env.ANVIL_HIDDEN,
+    show: !process.env.PITOO_HIDDEN,
     width: saved?.width ?? 1512,
     height: saved?.height ?? 920,
     ...(saved?.x !== undefined ? { x: saved.x, y: saved.y } : {}),
     minWidth: 1040,
     minHeight: 640,
     backgroundColor: '#131211',
-    title: 'Anvil',
+    title: 'Pitoo',
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 16, y: 16 } } : { autoHideMenuBar: true }),
     webPreferences: { preload: path.join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true, nodeIntegration: false }
   })
@@ -1354,7 +1362,7 @@ function createWindow(): void {
     })
   })
   win.on('close', () => {
-    if (projectArg || process.env.ANVIL_DATA_DIR || !win) return
+    if (projectArg || process.env.PITOO_DATA_DIR || !win) return
     settings = { ...settings, windowBounds: win.getBounds() }
     writeSettings()
   })
@@ -1375,7 +1383,7 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   loadSettings()
-  secrets = new Secrets(path.join(dataDir(), 'secrets.json'), !!process.env.ANVIL_MEMORY_SECRETS)
+  secrets = new Secrets(path.join(dataDir(), 'secrets.json'), !!process.env.PITOO_MEMORY_SECRETS)
   handlers()
   buildMenu()
   createWindow()

@@ -59,7 +59,7 @@ export function repoOf(repos: string[], rel: string): string | null {
 export const withinRepo = (repo: string, rel: string) => (repo === '.' ? rel : rel === repo ? '.' : rel.slice(repo.length + 1))
 export const outOfRepo = (repo: string, rel: string) => (repo === '.' ? rel : `${repo}/${rel}`)
 
-/* Project settings VS Code keeps in .vscode: Anvil follows the ones it understands. */
+/* Project settings VS Code keeps in .vscode: Pitoo follows the ones it understands. */
 
 function readJsonc(file: string): Record<string, unknown> | null {
   try {
@@ -114,7 +114,7 @@ const substitute = (value: unknown, folder: string, file: string | null): unknow
   return value
 }
 
-/** Debug setups from launch.json, in the form the debug engines expect. Types Anvil has no engine for are left out. */
+/** Debug setups from launch.json, in the form the debug engines expect. Types Pitoo has no engine for are left out. */
 export function vscodeLaunch(root: string, folders: string[] | null, activeFile: string | null): VscodeLaunch[] {
   const types: Record<string, string> = { node: 'pwa-node', 'pwa-node': 'pwa-node', chrome: 'pwa-chrome', 'pwa-chrome': 'pwa-chrome', python: 'python', debugpy: 'python' }
   const out: VscodeLaunch[] = []

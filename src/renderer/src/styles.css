@@ -124,7 +124,7 @@ code { font:11.5px var(--mono); background:rgb(var(--ov) / 0.055); border-radius
 .pane-empty { margin:auto; color:var(--text3); text-align:center; }
 .pane-empty.small { margin:14px; }
 .pane-empty.welcome { display:flex; flex-direction:column; align-items:center; gap:12px; }
-.pane-empty.welcome .mark { width:44px; height:44px; opacity:.5; filter:saturate(.7); }
+.pane-empty.welcome .mark { display:none; }
 .keys { display:flex; align-items:center; gap:7px; font-size:12px; }
 .keys kbd:not(:first-child) { margin-left:10px; }
 .editor-pane { flex:1; display:flex; flex-direction:column; min-width:0; }
@@ -428,39 +428,8 @@ input[type=number]::-webkit-inner-spin-button { display:none; }
 .quick-input-widget { box-shadow:0 30px 70px -18px var(--shadow) !important; }
 .monaco-menu .action-label,.quick-input-widget,.monaco-hover,.suggest-widget { font-family:var(--ui) !important; }
 
-/* The logo is a small character: it blinks by itself, hops when greeted, and keeps hopping while the model works. */
 .logo { display:inline-block; width:22px; height:22px; flex:none; }
 .logo svg { display:block; width:100%; height:100%; overflow:visible; }
-.logo-body { transform-box:view-box; transform-origin:36px 57.4px; }
-.logo-fill { fill:var(--brand); }
-.logo-eye { fill:#1c1712; transform-box:fill-box; transform-origin:center; animation:logo-blink 4.3s infinite; }
-.logo-eye:last-child { animation-delay:.02s; }
-.logo-eyes { transform-box:view-box; }
-.logo-smile,.logo-happy { fill:none; stroke:#1c1712; stroke-width:1.9; stroke-linecap:round; }
-.logo-happy { opacity:0; }
-.logo-star { fill:var(--brand); opacity:0; }
-.logo.hop .logo-body { animation:logo-hop .85s cubic-bezier(.3,.7,.4,1) both; }
-.logo.hop .logo-eyes { animation:logo-hide .85s both; }
-.logo.hop .logo-happy { animation:logo-show .85s both; }
-.logo.hop .logo-star { animation:logo-twinkle .85s var(--d) both; }
-.logo.working .logo-body { animation:logo-hop 1.3s cubic-bezier(.3,.7,.4,1) infinite; }
-.logo.working .logo-eyes { animation:logo-think 2.6s ease-in-out infinite; }
-.logo.working .logo-star { animation:logo-twinkle 1.3s var(--d) infinite; }
-@keyframes logo-blink { 0%,93%,100% { transform:none; } 96% { transform:scaleY(.08); } }
-@keyframes logo-hop {
-  0% { transform:none; }
-  16% { transform:scale(1.12,.84); }
-  44% { transform:translateY(-17px) scale(.94,1.08); }
-  68% { transform:scale(1.14,.82); }
-  82% { transform:scale(.96,1.05); }
-  100% { transform:none; }
-}
-@keyframes logo-hide { 0%,10% { opacity:1; } 14%,86% { opacity:0; } 92%,100% { opacity:1; } }
-@keyframes logo-show { 0%,10% { opacity:0; } 14%,86% { opacity:1; } 92%,100% { opacity:0; } }
-@keyframes logo-think { 0%,100% { transform:translateX(-1.6px); } 50% { transform:translateX(1.6px); } }
-@keyframes logo-twinkle { 0%,54% { opacity:0; scale:.3; } 70% { opacity:1; scale:1.1; } 100% { opacity:0; scale:.5; translate:0 -6px; } }
-@media (prefers-reduced-motion:reduce) { .logo-star,.logo-happy { display:none; } }
-
 /* File icons are bright by design, so they are calmed a little to sit well on charcoal. */
 .file-icon { display:block; flex:none; -webkit-user-drag:none; filter:saturate(.86) brightness(.97); }
 :root[data-theme="light"] .file-icon { filter:none; }

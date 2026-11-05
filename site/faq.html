@@ -3,62 +3,77 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FAQ | Anvil</title>
-<meta name="description" content="Straight answers about Anvil: cost, AI, privacy, VS Code extensions, and what it can't do yet.">
+<title>Pitoo FAQ: questions about the free code editor</title>
+<meta name="description" content="Straight answers about Pitoo: cost, AI, privacy, VS Code extensions, and what it can't do yet.">
+<link rel="canonical" href="https://pitoo.vercel.app/faq">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Pitoo">
+<meta property="og:title" content="Pitoo FAQ: questions about the free code editor">
+<meta property="og:description" content="Straight answers about Pitoo: cost, AI, privacy, VS Code extensions, and what it can't do yet.">
+<meta property="og:url" content="https://pitoo.vercel.app/faq">
+<meta property="og:image" content="https://pitoo.vercel.app/img/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#131211">
 <link rel="icon" href="/img/icon.png">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body class="doc-page">
 <header class="nav stuck-always">
-  <a class="brand" href="/" aria-label="Anvil home"><span class="mark" data-logo></span><span class="word">Anvil</span></a>
-  <nav aria-label="Main"><a href="/#features">Features</a><a href="/docs">Docs</a><a href="/faq" aria-current="page">FAQ</a><a href="https://github.com/okba-bouziane/anvil">GitHub</a></nav>
+  <a class="brand" href="/" aria-label="Pitoo home"><span class="word">Pitoo</span><span class="cat-peek" aria-hidden="true"></span></a>
+  <nav aria-label="Main"><a href="/#features">Features</a><a href="/docs">Docs</a><a href="/faq" aria-current="page">FAQ</a><a href="https://github.com/okba-bouziane/pitoo">GitHub</a></nav>
   <a class="btn primary small" href="/#download">Download</a>
 </header>
 <main class="faq-page">
 <h1>Questions</h1>
-<p class="doc-lead">Straight answers, including what Anvil can't do yet.</p>
+<p class="doc-lead">Straight answers, including what Pitoo can't do yet.</p>
 
 <h2>The basics</h2>
 <div class="faq">
-<details open><summary>Is Anvil free?</summary><p>Yes. It's open source under the MIT license, with no account and no paid plan. If you use a cloud AI provider, that provider charges you for what you use.</p></details>
+<details open><summary>Is Pitoo free?</summary><p>Yes. It's open source under the MIT license, with no account and no paid plan. If you use a cloud AI provider, that provider charges you for what you use.</p></details>
 <details><summary>Do I need AI to use it?</summary><p>No. The editor, terminal, Git, debugger and code help all work with no model and no key. Press one shortcut and the agent is gone.</p></details>
 <details><summary>Does it really work with no internet?</summary><p>Yes. The editor and its built-in code help need no connection, and neither does a local model once it's downloaded. Pushing code, the extension store and cloud AI do need one.</p></details>
 <details><summary>Which systems does it run on?</summary><p>Mac with Apple Silicon, and 64-bit Windows and Linux. Windows and Linux have run on automated test machines, but haven't been used much on real desktops yet.</p></details>
 <details><summary>Why does my system warn me when I install it?</summary><p>The app isn't signed or notarized yet, because that costs money and setup for a new project. The code is public, and you can build it yourself. See <a href="/docs#install">Install</a>.</p></details>
+<details><summary>Why is it called Pitoo?</summary><p>It's named after the maker's fluffy orange cat, who has green eyes and watches the screen. That's the cat in the logo.</p></details>
+<details><summary>Wasn't this called Anvil?</summary><p>Yes, until version 0.4.0. Several other developer tools use that name, so it was hard to find. Updating brings your settings and chats across. API keys need entering once more, because they're encrypted to the old app name.</p></details>
 </div>
 
 <h2>Compared to VS Code</h2>
 <div class="faq">
 <details><summary>Does it replace VS Code?</summary><p>For many people working in TypeScript, Angular or Python, it can cover the daily work. VS Code is far more mature and has a huge extension library, so if you depend on specific extensions, keep it.</p></details>
-<details><summary>Do VS Code extensions run?</summary><p>Themes and snippets do. Extensions that are programs don't, because they're written for VS Code's internal engine. Editors that run them, like Kiro and Trae, are built from VS Code's own source code. Anvil isn't. The Extensions panel labels what each one can do.</p></details>
-<details><summary>Can I bring my setup across?</summary><p>One button imports your settings, snippets and color themes. Anvil also reads <code>.vscode/settings.json</code>, <code>tasks.json</code>, <code>launch.json</code> and <code>.code-workspace</code> files.</p></details>
+<details><summary>Do VS Code extensions run?</summary><p>Themes and snippets do. Extensions that are programs don't, because they're written for VS Code's internal engine. Editors that run them, like Kiro and Trae, are built from VS Code's own source code. Pitoo isn't. The Extensions panel labels what each one can do.</p></details>
+<details><summary>Can I bring my setup across?</summary><p>One button imports your settings, snippets and color themes. Pitoo also reads <code>.vscode/settings.json</code>, <code>tasks.json</code>, <code>launch.json</code> and <code>.code-workspace</code> files.</p></details>
 <details><summary>Which languages have full code help?</summary><p>TypeScript, JavaScript, Python and Angular templates. HTML, CSS and JSON get some completion, and other languages get syntax colors.</p></details>
 <details><summary>Can I change the keyboard shortcuts?</summary><p>Not yet. The main ones match VS Code.</p></details>
 </div>
 
 <h2>AI and privacy</h2>
 <div class="faq">
-<details><summary>Does my code leave my computer?</summary><p>Not with no AI or a local model. With Anthropic, OpenAI or a remote server, the code the agent reads and your messages go to that provider. The chat box always tells you which one you're using. Anvil has no telemetry.</p></details>
+<details><summary>Can I use my Claude Pro or Max subscription in the chat?</summary><p>Not in Pitoo's own chat. Anthropic's rules don't let other apps offer Claude login or route requests through subscription plans, so the chat uses a local model or an API key. You can run the official Claude Code in Pitoo's terminal with your subscription: the Claude Code button opens it, and it handles its own sign-in.</p></details>
+<details><summary>Can the agent read my passwords and keys?</summary><p>By default it can't open, list or search <code>.env</code> files, private keys and similar files, and you can add more in <code>.pitooignore</code>. A command you approve runs with your permissions and could read them, so check commands before you allow them.</p></details>
+<details><summary>Does my code leave my computer?</summary><p>Not with no AI or a local model. With Anthropic, OpenAI or a remote server, the code the agent reads and your messages go to that provider. The chat box always tells you which one you're using. Pitoo has no telemetry.</p></details>
 <details><summary>How good is a local model?</summary><p>On a 16 GB MacBook, a 6 GB model is good for single files, small features and tests while you review the work. In one test it wrote about 24 tokens per second and finished a feature across 11 files in about 10 minutes, though earlier versions of that test failed. It can't reliably build a whole project alone.</p></details>
-<details><summary>Is it safe to let the agent run commands?</summary><p>Commands ask first by default. Once you approve one, it runs with your full user permissions, and Anvil can't undo what it changes. Leave Auto-run off unless you trust the project.</p></details>
+<details><summary>Is it safe to let the agent run commands?</summary><p>Commands ask first by default. Once you approve one, it runs with your full user permissions, and Pitoo can't undo what it changes. Leave Auto-run off unless you trust the project.</p></details>
 <details><summary>Can I undo what the agent did?</summary><p>Yes. Keep or undo each block, each file, or everything, and Undo this step restores every file from a step. This covers file edits, not what a command did.</p></details>
-<details><summary>Why does Anvil ask before running ESLint and Prettier?</summary><p>Their config files are code from the project. Opening a project you don't trust shouldn't run its code, so you allow it once per project.</p></details>
+<details><summary>Why does Pitoo ask before running ESLint and Prettier?</summary><p>Their config files are code from the project. Opening a project you don't trust shouldn't run its code, so you allow it once per project.</p></details>
 </div>
 
 <h2>What it can't do yet</h2>
 <div class="faq">
-<details><summary>What's missing?</summary><p>Program extensions, custom keyboard shortcuts, remote development, Live Share, built-in Docker tools, deep code help for other languages, and more than two side-by-side splits.</p></details>
-<details><summary>How well tested is it?</summary><p>A test suite runs on Mac, Windows and Linux machines. It's a new project, though, and some parts haven't been tried in real use, including the Anthropic and OpenAI connections with real keys, pull requests, the Chrome debugger and updating to a new version. Please <a href="https://github.com/okba-bouziane/anvil/issues">report what you find</a>.</p></details>
-<details><summary>Can I help?</summary><p>Yes. The code is on <a href="https://github.com/okba-bouziane/anvil">GitHub</a>, and bug reports from real use help most.</p></details>
+<details><summary>What's missing?</summary><p>Program extensions, remote development, Live Share, built-in Docker tools, deep code help for other languages, and more than two side-by-side splits.</p></details>
+<details><summary>How well tested is it?</summary><p>A test suite runs on Mac, Windows and Linux machines. It's a new project, though, and some parts haven't been tried in real use, including the Anthropic and OpenAI connections with real keys, pull requests, the Chrome debugger and updating to a new version. Please <a href="https://github.com/okba-bouziane/pitoo/issues">report what you find</a>.</p></details>
+<details><summary>Can I help?</summary><p>Yes. The code is on <a href="https://github.com/okba-bouziane/pitoo">GitHub</a>, and bug reports from real use help most.</p></details>
 </div>
 </main>
 <footer>
-  <a class="brand" href="/"><span class="mark" data-logo></span>Anvil</a>
+  <a class="brand" href="/"><span class="mark" data-logo></span>Pitoo</a>
   <span>Open source under the MIT license.</span>
-  <a href="/docs">Docs</a><a href="/faq">FAQ</a><a href="https://github.com/okba-bouziane/anvil">GitHub</a><a href="https://github.com/okba-bouziane/anvil/issues">Report a problem</a>
+  <a href="/docs">Docs</a><a href="/faq">FAQ</a><a href="https://github.com/okba-bouziane/pitoo">GitHub</a><a href="https://github.com/okba-bouziane/pitoo/issues">Report a problem</a>
   <span class="right">Made by <a href="https://devokba.vercel.app">Okba Bouziane</a></span>
 </footer>
+<script src="/cat.js"></script>
 <script src="/page.js"></script>
 </body>
 </html>

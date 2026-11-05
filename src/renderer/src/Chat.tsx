@@ -5,7 +5,7 @@ import { mdBlocks } from '../../shared/mdblocks'
 import { FileIcon, Icon, Logo } from './Icon'
 import { MOD } from './keys'
 
-const api = window.anvil
+const api = window.pitoo
 
 const TOOL: Record<string, { label: string; icon: string }> = {
   read_file: { label: 'Read', icon: 'read' },
@@ -382,7 +382,7 @@ export function Chat(p: ChatProps) {
 
       {busy && (
         <div className="live-bar">
-          <Logo motion="working" />
+          <Logo />
           {items.some((i) => i.kind === 'approval' && i.status === 'pending') ? 'Waiting for your answer' : live.waiting ? 'Waiting for the model…' : <span>Writing <b>{live.tokensPerSecond.toFixed(1)}</b> tokens/s · {live.tokens} tokens</span>}
         </div>
       )}

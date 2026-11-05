@@ -6,7 +6,7 @@ import { applyEdit, globToRegExp, readFileTool, repairArgs, runCommand, safePath
 
 let root: string
 beforeEach(() => {
-  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-')))
+  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-')))
 })
 
 describe('safePath', () => {

@@ -47,7 +47,7 @@ const server = http.createServer((req, res) => {
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
 const modelUrl = `http://127.0.0.1:${server.address().port}/v1`
 
-const root = path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-tour-project-'))), 'invoice-api')
+const root = path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-tour-project-'))), 'invoice-api')
 fs.mkdirSync(path.join(root, 'src'), { recursive: true })
 fs.mkdirSync(path.join(root, 'node_modules'))
 fs.symlinkSync(path.resolve('node_modules/typescript'), path.join(root, 'node_modules/typescript'))
@@ -91,9 +91,9 @@ git('merge', '--no-edit', '-X', 'ours', 'checkout')
 git('tag', 'v1.0')
 fs.appendFileSync(path.join(root, 'tsconfig.json'), '\n')
 
-const data = fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-tour-'))
+const data = fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-tour-'))
 fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ provider: 'local', theme, inlineSuggest: false, baseUrls: { local: modelUrl, anthropic: modelUrl.replace('/v1', ''), openai: modelUrl }, models: { local: 'mlx-community/Qwen3.5-9B-4bit' }, recentProjects: [root, '/Users/you/projects/storefront', '/Users/you/projects/billing-service'] }))
-const app = await electron.launch({ args: ['.'], env: { ...process.env, ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
+const app = await electron.launch({ args: ['.'], env: { ...process.env, PITOO_DATA_DIR: data, PITOO_MEMORY_SECRETS: '1' } })
 const page = await app.firstWindow()
 const failed = []
 let shotNumber = 0
@@ -112,7 +112,7 @@ const step = async (name, run) => {
 }
 const button = (name, exact = true) => page.getByRole('button', { name, exact })
 const sidebar = (name) => page.getByRole('tab', { name }).click({ timeout: 4000 })
-const event = (payload) => app.evaluate(({ BrowserWindow }, p) => BrowserWindow.getAllWindows()[0].webContents.send('anvil:event', p), payload)
+const event = (payload) => app.evaluate(({ BrowserWindow }, p) => BrowserWindow.getAllWindows()[0].webContents.send('pitoo:event', p), payload)
 const openFile = async (name) => {
   await page.keyboard.press('ControlOrMeta+p')
   await page.locator('#quick-open').fill(name)
@@ -271,7 +271,7 @@ for (const tab of ['Local', 'Anthropic', 'OpenAI', 'Custom', 'Editor']) {
 }
 await step('settings-editor-bottom', async () => { await page.locator('.modal-main').evaluate((el) => { el.scrollTop = el.scrollHeight }) })
 await step('settings-check-now', async () => {
-  await page.evaluate(() => { window.anvil.checkUpdate = async () => ({ current: '0.2.1', latest: null }) })
+  await page.evaluate(() => { window.pitoo.checkUpdate = async () => ({ current: '0.2.1', latest: null }) })
 })
 await step('settings-anthropic-key', async () => {
   await page.locator('.modal-nav button', { hasText: 'Anthropic' }).click()
@@ -281,7 +281,7 @@ await step('settings-anthropic-key', async () => {
 })
 await button('Close').click()
 
-await event({ type: 'update', version: 'v0.3.0', url: 'https://github.com/okba-bouziane/anvil/releases', canInstall: true })
+await event({ type: 'update', version: 'v0.3.0', url: 'https://github.com/okba-bouziane/pitoo/releases', canInstall: true })
 await step('update-button', async () => { await page.locator('.update-btn').waitFor({ timeout: 2000 }) })
 await step('update-downloading', async () => { await event({ type: 'update-progress', percent: 42 }); await page.locator('.update-btn.downloading').waitFor({ timeout: 2000 }) })
 await step('update-ready', async () => { await event({ type: 'update-ready', label: 'Restart to update' }); await button('Restart to update').waitFor({ timeout: 2000 }) })

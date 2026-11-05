@@ -3,36 +3,46 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Documentation | Anvil</title>
-<meta name="description" content="How to install and use Anvil: the editor, Git, workspaces, debugging, extensions, and the optional AI agent.">
+<title>Pitoo documentation: install and use the editor</title>
+<meta name="description" content="How to install and use Pitoo: the editor, Git, workspaces, debugging, extensions, and the optional AI agent.">
+<link rel="canonical" href="https://pitoo.vercel.app/docs">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Pitoo">
+<meta property="og:title" content="Pitoo documentation: install and use the editor">
+<meta property="og:description" content="How to install and use Pitoo: the editor, Git, workspaces, debugging, extensions, and the optional AI agent.">
+<meta property="og:url" content="https://pitoo.vercel.app/docs">
+<meta property="og:image" content="https://pitoo.vercel.app/img/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#131211">
 <link rel="icon" href="/img/icon.png">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body class="doc-page">
 <header class="nav stuck-always">
-  <a class="brand" href="/" aria-label="Anvil home"><span class="mark" data-logo></span><span class="word">Anvil</span></a>
-  <nav aria-label="Main"><a href="/#features">Features</a><a href="/docs" aria-current="page">Docs</a><a href="/faq">FAQ</a><a href="https://github.com/okba-bouziane/anvil">GitHub</a></nav>
+  <a class="brand" href="/" aria-label="Pitoo home"><span class="word">Pitoo</span><span class="cat-peek" aria-hidden="true"></span></a>
+  <nav aria-label="Main"><a href="/#features">Features</a><a href="/docs" aria-current="page">Docs</a><a href="/faq">FAQ</a><a href="https://github.com/okba-bouziane/pitoo">GitHub</a></nav>
   <a class="btn primary small" href="/#download">Download</a>
 </header>
 <div class="doc-layout">
 <aside class="doc-side" aria-label="On this page">
-  <a href="#install">Install</a><a href="#start">First steps</a><a href="#editor">The editor</a><a href="#workspaces">Windows and workspaces</a><a href="#search">Search</a><a href="#terminal">Terminal and tasks</a><a href="#git">Git</a><a href="#code-help">Code help</a><a href="#lint">ESLint and Prettier</a><a href="#debug">Debugging</a><a href="#extensions">Extensions</a><a href="#vscode">Coming from VS Code</a><a href="#ai">AI models</a><a href="#agent">The agent</a><a href="#review">Reviewing changes</a><a href="#shortcuts">Keyboard shortcuts</a><a href="#privacy">Privacy and security</a><a href="#trouble">Troubleshooting</a>
+  <a href="#install">Install</a><a href="#start">First steps</a><a href="#editor">The editor</a><a href="#workspaces">Windows and workspaces</a><a href="#search">Search</a><a href="#terminal">Terminal and tasks</a><a href="#git">Git</a><a href="#code-help">Code help</a><a href="#lint">ESLint and Prettier</a><a href="#debug">Debugging</a><a href="#extensions">Extensions</a><a href="#vscode">Coming from VS Code</a><a href="#ai">AI models</a><a href="#agent">The agent</a><a href="#more-agent">Working with the agent</a><a href="#review">Reviewing changes</a><a href="#shortcuts">Keyboard shortcuts</a><a href="#crash">Shortcuts and recovery</a><a href="#privacy">Privacy and security</a><a href="#trouble">Troubleshooting</a>
 </aside>
 <main class="doc-main">
 <h1>Documentation</h1>
-<p class="doc-lead">Anvil is a free, open source code editor. It works with no account, no AI and no internet. Everything here applies to Mac, Windows and Linux unless it says otherwise.</p>
+<p class="doc-lead">Pitoo is a free, open source code editor. It works with no account, no AI and no internet. Everything here applies to Mac, Windows and Linux unless it says otherwise.</p>
 
 <section id="install"><h2>Install</h2>
 <h3>Mac</h3>
-<ol><li>Download the Mac file from the <a href="/#download">download section</a>. It's for Apple Silicon.</li><li>Unzip it and move Anvil to Applications.</li><li>The app isn't notarized by Apple yet, so run this once in Terminal:</li></ol>
-<pre><code>xattr -cr /Applications/Anvil.app</code></pre>
+<ol><li>Download the Mac file from the <a href="/#download">download section</a>. It's for Apple Silicon.</li><li>Unzip it and move Pitoo to Applications.</li><li>The app isn't notarized by Apple yet, so run this once in Terminal:</li></ol>
+<pre><code>xattr -cr /Applications/Pitoo.app</code></pre>
 <h3>Windows</h3>
 <p>Run the installer. It isn't signed yet, so SmartScreen may warn you. Choose More info, then Run anyway.</p>
 <h3>Linux</h3>
 <p>Use the AppImage, which needs no install, or the deb package:</p>
-<pre><code>chmod +x Anvil-linux-x86_64.AppImage
-sudo apt install ./Anvil-linux-amd64.deb</code></pre>
+<pre><code>chmod +x Pitoo-linux-x86_64.AppImage
+sudo apt install ./Pitoo-linux-amd64.deb</code></pre>
 <h3>Updates</h3>
 <p>When a new version is out, an Update button appears at the top of the window. It downloads the new version, then offers to restart. You can turn the check off in Settings, under Editor.</p>
 </section>
@@ -43,16 +53,16 @@ sudo apt install ./Anvil-linux-amd64.deb</code></pre>
 </section>
 
 <section id="editor"><h2>The editor</h2>
-<p>Anvil uses Monaco, the same editing engine as VS Code, so multiple cursors, find and replace, code folding and most editing shortcuts work the same way.</p>
+<p>Pitoo uses Monaco, the same editing engine as VS Code, so multiple cursors, find and replace, code folding and most editing shortcuts work the same way.</p>
 <ul><li><b>Side by side:</b> press <kbd>⌘\</kbd> or right-click a tab and choose Open to the side. Drag the divider to resize, and double-click it to reset.</li><li><b>Tabs:</b> drag to reorder, middle-click to close, right-click to close others. <kbd>⇧⌘T</kbd> reopens the last one.</li><li><b>Panels:</b> drag any panel edge to resize it, and double-click to go back to the default size. <kbd>⌘B</kbd> hides the side panel.</li><li><b>Zen mode:</b> shows only the code. Choose it from the View menu, and press Escape to leave.</li><li><b>Previews:</b> images open as pictures, and Markdown files have a Preview button.</li><li><b>Saving:</b> auto-save is on by default. Turn it off in Settings, under Editor.</li><li><b>Margin marks:</b> show lines that differ from your last commit.</li></ul>
 <p>Font size, cursor style, tab size, word wrap, minimap, sticky scroll and file icons are all in Settings (<kbd>⌘,</kbd>).</p>
 </section>
 
 <section id="workspaces"><h2>Windows and workspaces</h2>
 <p><b>New window:</b> press <kbd>⇧⌘N</kbd> to open another project in its own window.</p>
-<p><b>Workspace:</b> several folders open together, such as a frontend and a backend in separate repositories. Choose File, then Add Folder to Workspace. Save it with File, then Save Workspace As. Anvil reads and writes the same <code>.code-workspace</code> files as VS Code.</p>
+<p><b>Workspace:</b> several folders open together, such as a frontend and a backend in separate repositories. Choose File, then Add Folder to Workspace. Save it with File, then Save Workspace As. Pitoo reads and writes the same <code>.code-workspace</code> files as VS Code.</p>
 <p>Only the folders you add can be seen or changed, including by the agent. If they hold separate repositories, a menu at the top of the Git panel switches between them.</p>
-<p><b>Terminal command:</b> on Mac and Linux, run Install the anvil terminal command from the command palette. Then <code>anvil .</code> opens any folder.</p>
+<p><b>Terminal command:</b> on Mac and Linux, run Install the pitoo terminal command from the command palette. Then <code>pitoo .</code> opens any folder.</p>
 </section>
 
 <section id="search"><h2>Search</h2>
@@ -71,21 +81,21 @@ sudo apt install ./Anvil-linux-amd64.deb</code></pre>
 <h3>Resolving a conflict</h3>
 <ol><li>When a merge or rebase stops, the panel shows Merging or Rebasing, with the files to fix.</li><li>Open a file. Each conflict has Keep current, Keep incoming and Keep both, and you can also edit by hand.</li><li>Save, then press the check mark beside the file to mark it resolved.</li><li>Press Continue, or Abort to go back to how things were.</li></ol>
 <h3>Pull requests</h3>
-<p>These use GitHub's <a href="https://cli.github.com">gh</a> tool. Install it and run <code>gh auth login</code> once. Anvil then lists, checks out and creates pull requests, and never sees your GitHub password or token.</p>
+<p>These use GitHub's <a href="https://cli.github.com">gh</a> tool. Install it and run <code>gh auth login</code> once. Pitoo then lists, checks out and creates pull requests, and never sees your GitHub password or token.</p>
 </section>
 
 <section id="code-help"><h2>Code help</h2>
 <table><thead><tr><th>Language</th><th>What you get</th></tr></thead><tbody>
 <tr><td>TypeScript, JavaScript</td><td>Errors as you type, completion with automatic imports, hover, go to definition, references, rename, a project-wide Problems list, and outline</td></tr>
-<tr><td>Angular templates</td><td>Errors, completion, hover and go to definition in templates, using the Angular language server included with Anvil</td></tr>
-<tr><td>Python</td><td>Errors, completion, hover, go to definition, references and rename, using Pyright included with Anvil. Works offline</td></tr>
+<tr><td>Angular templates</td><td>Errors, completion, hover and go to definition in templates, using the Angular language server included with Pitoo</td></tr>
+<tr><td>Python</td><td>Errors, completion, hover, go to definition, references and rename, using Pyright included with Pitoo. Works offline</td></tr>
 <tr><td>HTML, CSS, JSON</td><td>Some completion, Emmet, and HTML tags that close themselves</td></tr>
 <tr><td>Others</td><td>Syntax colors</td></tr>
 </tbody></table>
 </section>
 
 <section id="lint"><h2>ESLint and Prettier</h2>
-<p>If your project uses them, Anvil asks once whether to allow them. It runs your project's own installed versions with your own config, the way VS Code does, and that means running code from the project. Only allow it for projects you trust.</p>
+<p>If your project uses them, Pitoo asks once whether to allow them. It runs your project's own installed versions with your own config, the way VS Code does, and that means running code from the project. Only allow it for projects you trust.</p>
 <p>Once allowed, ESLint problems appear as you type, with quick fixes. Prettier handles Format and format on save. Fix ESLint problems on save is in Settings. In a monorepo, each package uses its own config.</p>
 </section>
 
@@ -99,12 +109,12 @@ sudo apt install ./Anvil-linux-amd64.deb</code></pre>
 
 <section id="extensions"><h2>Extensions</h2>
 <p>Press <kbd>⇧⌘X</kbd> to browse <a href="https://open-vsx.org">Open VSX</a>, the open extension registry. Each extension is labeled:</p>
-<ul><li><b>Works in Anvil:</b> color themes and snippets. These install and work.</li><li><b>Partly works:</b> its themes or snippets work, and the rest of it doesn't.</li><li><b>Can't run yet:</b> a program, such as a language pack or GitLens.</li></ul>
-<p>Program extensions don't run because they depend on VS Code's internal engine, which Anvil doesn't have. Anvil keeps only an extension's data files and never runs its code.</p>
+<ul><li><b>Works in Pitoo:</b> color themes and snippets. These install and work.</li><li><b>Partly works:</b> its themes or snippets work, and the rest of it doesn't.</li><li><b>Can't run yet:</b> a program, such as a language pack or GitLens.</li></ul>
+<p>Program extensions don't run because they depend on VS Code's internal engine, which Pitoo doesn't have. Pitoo keeps only an extension's data files and never runs its code.</p>
 </section>
 
 <section id="vscode"><h2>Coming from VS Code</h2>
-<ul><li><b>Import:</b> Settings, then Editor, then Import from VS Code copies your settings, snippets and color themes.</li><li><b>Project files:</b> Anvil follows editor settings in <code>.vscode/settings.json</code>, and reads <code>tasks.json</code>, <code>launch.json</code> and <code>.code-workspace</code> files.</li><li><b>Shortcuts:</b> the main ones match. See the list below, or Keyboard Shortcuts in the File menu. They can't be changed yet.</li></ul>
+<ul><li><b>Import:</b> Settings, then Editor, then Import from VS Code copies your settings, snippets and color themes.</li><li><b>Project files:</b> Pitoo follows editor settings in <code>.vscode/settings.json</code>, and reads <code>tasks.json</code>, <code>launch.json</code> and <code>.code-workspace</code> files.</li><li><b>Shortcuts:</b> the main ones match. See the list below, or Keyboard Shortcuts in the File menu. They can't be changed yet.</li></ul>
 </section>
 
 <section id="ai"><h2>AI models</h2>
@@ -120,8 +130,15 @@ sudo apt install ./Anvil-linux-amd64.deb</code></pre>
 
 <section id="agent"><h2>The agent</h2>
 <ul><li><b>Agent:</b> reads, edits and runs commands.</li><li><b>Plan:</b> can only read, and proposes what to do.</li><li><b>Ask:</b> answers questions, with no tools.</li></ul>
-<p>Type <code>@</code> to attach a file. Put your project's rules in <code>ANVIL.md</code> or <code>AGENTS.md</code> and the agent follows them. Each project keeps its own chats, which survive a restart.</p>
-<p>Commands ask before they run. Once approved, a command has your full user permissions and can't be undone from Anvil, so leave Auto-run commands off unless you trust the project.</p>
+<p>Type <code>@</code> to attach a file. Put your project's rules in <code>PITOO.md</code>, <code>ANVIL.md</code> or <code>AGENTS.md</code> and the agent follows them. Each project keeps its own chats, which survive a restart.</p>
+<p>Commands ask before they run. Once approved, a command has your full user permissions and can't be undone from Pitoo, so leave Auto-run commands off unless you trust the project.</p>
+</section>
+
+<section id="more-agent"><h2>Working with the agent</h2>
+<ul><li><b>Type while it works:</b> press Enter and your message waits, then goes out when the agent finishes. Choose Send now and the agent reads it before its next step.</li>
+<li><b>Protect secrets:</b> the agent can't open, list or search <code>.env</code> files, private keys and similar files. Add your own patterns to a <code>.pitooignore</code> file in the project, and use <code>!</code> for exceptions. A command you approve can still read any file, and a file you attach with <code>@</code> is sent.</li>
+<li><b>Import sessions:</b> open the chat list and choose Import sessions to bring in your local Claude Code conversations. Messages and answers come across. Tool results and earlier edits don't.</li>
+<li><b>Claude Code:</b> the Claude Code button opens the official tool in the built-in terminal, with its own sign-in. Pitoo never sees that sign-in. The chat panel uses a local model or an API key.</li></ul>
 </section>
 
 <section id="review"><h2>Reviewing changes</h2>
@@ -136,22 +153,28 @@ sudo apt install ./Anvil-linux-amd64.deb</code></pre>
 </tbody></table>
 </section>
 
+<section id="crash"><h2>Shortcuts and crash recovery</h2>
+<p>Open Keyboard shortcuts from the command palette to change any shortcut, see conflicts, or import your VS Code <code>keybindings.json</code>. Two-step shortcuts aren't supported yet.</p>
+<p>With auto-save off, Pitoo keeps a local copy of unsaved edits. After a crash it offers to restore them. Settings has its own search box.</p>
+</section>
+
 <section id="privacy"><h2>Privacy and security</h2>
-<ul><li>No account and no telemetry.</li><li>With no AI or a local model, your code stays on your computer.</li><li>With a cloud provider, the code the agent reads and your messages go to that provider.</li><li>Network use you can turn off or avoid: the update check, the extension store, and Git commands you run.</li><li>API keys are encrypted with your system's secure storage. On Linux without a keyring, Anvil refuses to save them.</li></ul>
+<ul><li>No account and no telemetry.</li><li>With no AI or a local model, your code stays on your computer.</li><li>With a cloud provider, the code the agent reads and your messages go to that provider.</li><li>Network use you can turn off or avoid: the update check, the extension store, and Git commands you run.</li><li>API keys are encrypted with your system's secure storage. On Linux without a keyring, Pitoo refuses to save them.</li></ul>
 </section>
 
 <section id="trouble"><h2>Troubleshooting</h2>
-<dl class="doc-dl"><dt>Mac says the app is damaged</dt><dd>Run <code>xattr -cr /Applications/Anvil.app</code>.</dd><dt>Git says it couldn't sign in</dt><dd>Run the same command once in the terminal to sign in, then try again.</dd><dt>ESLint shows nothing</dt><dd>Check that you allowed it for this project, and that <code>npm install</code> has been run.</dd><dt>Python can't find a package</dt><dd>Allow the project so Anvil can use its <code>.venv</code>, or install the package in your Python.</dd><dt>The local model feels slow</dt><dd>Close heavy apps and use the graphics chip setting above. See <a href="/faq">the FAQ</a> for what to expect.</dd></dl>
-<p>Still stuck? <a href="https://github.com/okba-bouziane/anvil/issues">Report a problem on GitHub</a>.</p>
+<dl class="doc-dl"><dt>Mac says the app is damaged</dt><dd>Run <code>xattr -cr /Applications/Pitoo.app</code>.</dd><dt>Git says it couldn't sign in</dt><dd>Run the same command once in the terminal to sign in, then try again.</dd><dt>ESLint shows nothing</dt><dd>Check that you allowed it for this project, and that <code>npm install</code> has been run.</dd><dt>Python can't find a package</dt><dd>Allow the project so Pitoo can use its <code>.venv</code>, or install the package in your Python.</dd><dt>The local model feels slow</dt><dd>Close heavy apps and use the graphics chip setting above. See <a href="/faq">the FAQ</a> for what to expect.</dd></dl>
+<p>Still stuck? <a href="https://github.com/okba-bouziane/pitoo/issues">Report a problem on GitHub</a>.</p>
 </section>
 </main>
 </div>
 <footer>
-  <a class="brand" href="/"><span class="mark" data-logo></span>Anvil</a>
+  <a class="brand" href="/"><span class="mark" data-logo></span>Pitoo</a>
   <span>Open source under the MIT license.</span>
-  <a href="/docs">Docs</a><a href="/faq">FAQ</a><a href="https://github.com/okba-bouziane/anvil">GitHub</a><a href="https://github.com/okba-bouziane/anvil/issues">Report a problem</a>
+  <a href="/docs">Docs</a><a href="/faq">FAQ</a><a href="https://github.com/okba-bouziane/pitoo">GitHub</a><a href="https://github.com/okba-bouziane/pitoo/issues">Report a problem</a>
   <span class="right">Made by <a href="https://devokba.vercel.app">Okba Bouziane</a></span>
 </footer>
+<script src="/cat.js"></script>
 <script src="/page.js"></script>
 </body>
 </html>

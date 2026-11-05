@@ -1,4 +1,4 @@
-const isMac = window.anvil.platform === 'darwin'
+const isMac = window.pitoo.platform === 'darwin'
 
 /** Shortcut labels and the main shortcut key: Command on a Mac, Ctrl elsewhere. */
 export const MOD = isMac ? '⌘' : 'Ctrl+'

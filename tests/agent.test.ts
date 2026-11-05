@@ -11,7 +11,7 @@ import type { CheckResult } from '../src/main/tscheck'
 
 let root: string
 beforeEach(() => {
-  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-')))
+  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-')))
 })
 
 const tool = (name: string, args: Record<string, string>): string => {

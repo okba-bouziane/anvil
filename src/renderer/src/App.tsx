@@ -21,7 +21,7 @@ import { eventToKey, keyFromLabel, prettyKey, type KeyMap } from '../../shared/k
 const SettingsModal = lazy(() => import('./Settings').then((m) => ({ default: m.SettingsModal })))
 const TerminalPanel = lazy(() => import('./Terminal').then((m) => ({ default: m.TerminalPanel })))
 
-const api = window.anvil
+const api = window.pitoo
 const STATUS_LABEL: Record<ModelStatus, string> = { online: 'Ready', offline: 'Off', starting: 'Starting…', nokey: 'Needs API key' }
 
 function QuickOpen({ files, onPick, onClose }: { files: string[]; onPick(path: string): void; onClose(): void }) {
@@ -61,9 +61,8 @@ function QuickOpen({ files, onPick, onClose }: { files: string[]; onPick(path: s
 function Welcome({ recent, onOpen, onOpenWorkspace, onClone, onRecent }: { recent: string[]; onOpen(): void; onOpenWorkspace(): void; onClone(): void; onRecent(path: string): void }) {
   return (
     <div className="welcome-screen">
-      <Logo motion="hop" />
-      <h1>Anvil</h1>
-      <span className="temper-bar" />
+      <Logo />
+      <h1>Pitoo</h1>
       <p>A code editor that works with the Wi-Fi off.</p>
       <div className="row welcome-actions">
         <button className="primary large" onClick={onOpen}>Open a project</button>
@@ -669,7 +668,7 @@ export function App() {
     return () => window.clearTimeout(timer)
   }, [showAgent, glide])
   const importedTheme = assets.themes.find((t) => t.id === settings?.editorTheme)
-  const themeName = importedTheme ? importedThemeName(importedTheme.id) : dark ? 'anvil' : 'anvil-light'
+  const themeName = importedTheme ? importedThemeName(importedTheme.id) : dark ? 'pitoo' : 'pitoo-light'
   setFileIconPrefs(settings?.fileIcons !== false, !dark)
   const darkWas = useRef(dark)
   useEffect(() => {
@@ -739,7 +738,7 @@ export function App() {
     { id: 'open-file', label: 'Go to file', keys: `${MOD}P`, run: () => { void api.listFiles().then(setFiles); setQuick(true) } },
     { id: 'open-folder', label: 'Open a project', run: open },
     { id: 'new-window', label: 'Open a project in a new window', keys: `${SHIFT}${MOD}N`, run: () => void api.newWindow().catch(onError) },
-    { id: 'install-command', label: 'Install the anvil terminal command', run: () => void api.installCommand().then((m) => window.alert(m)).catch(onError) },
+    { id: 'install-command', label: 'Install the pitoo terminal command', run: () => void api.installCommand().then((m) => window.alert(m)).catch(onError) },
     { id: 'new-file', label: 'New file', keys: `${MOD}⌥N`, run: askNewFile },
     { id: 'new-window-empty', label: 'New window', keys: `${SHIFT}${MOD}N`, run: () => void api.newWindow().catch(onError) },
     { id: 'open-file-dialog', label: 'Open a file', keys: `${MOD}O`, run: () => void api.openFileDialog().then((f) => { if (f) pickFile(f) }).catch(onError) },
@@ -806,8 +805,8 @@ export function App() {
   return (
     <div className={`app platform-${api.platform} ${zen ? 'zen' : ''}`} onKeyDown={(e) => { if (e.key === 'Escape' && zen) setZen(false) }}>
       <header className="topbar">
-        <Logo motion={busy ? 'working' : undefined} />
-        <span className="brand">Anvil</span>
+        <Logo />
+        <span className="brand">Pitoo</span>
         {project && <span className="sep">/</span>}
         {project && <button className="ghost project" title={project.folders ? project.folders.join(', ') : project.root} onClick={open}>{project.name}</button>}
         {branch && <button className="ghost pill" title="Open Git" onClick={() => setTab('git')}><Icon name="branch" size={12} />{branch}</button>}
@@ -827,7 +826,7 @@ export function App() {
           ? <button className="primary update-btn" onClick={() => void api.applyUpdate().catch(onError)}>{updateReady}</button>
           : updateProgress !== null
             ? <button className="update-btn downloading" disabled style={{ '--p': `${updateProgress}%` } as CSSProperties}>Downloading {updateProgress}%</button>
-            : <button className="primary update-btn" title={`Anvil ${newVersion.version} is available`} onClick={() => {
+            : <button className="primary update-btn" title={`Pitoo ${newVersion.version} is available`} onClick={() => {
                 if (!newVersion.canInstall) return void api.openRelease(newVersion.url)
                 setUpdateProgress(0)
                 void api.downloadUpdate().catch((e) => { setUpdateProgress(null); onError(e) })

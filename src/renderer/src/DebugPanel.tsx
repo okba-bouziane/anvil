@@ -3,7 +3,7 @@ import type { DebugConfig, DebugVariable, ScriptEntry } from '../../shared/types
 import { debug } from './debugStore'
 import { Icon } from './Icon'
 
-const api = window.anvil
+const api = window.pitoo
 
 function Variable({ item, depth }: { item: DebugVariable; depth: number }) {
   const [open, setOpen] = useState(false)
