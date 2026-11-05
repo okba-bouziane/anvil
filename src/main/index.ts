@@ -1209,6 +1209,8 @@ function handlers() {
 function createWindow(): void {
   const saved = process.env.ANVIL_DATA_DIR || !settings.windowBounds?.width ? null : settings.windowBounds
   win = new BrowserWindow({
+    // Tests run hidden, so windows don't appear over whatever the person is doing.
+    show: !process.env.ANVIL_HIDDEN,
     width: saved?.width ?? 1512,
     height: saved?.height ?? 920,
     ...(saved?.x !== undefined ? { x: saved.x, y: saved.y } : {}),

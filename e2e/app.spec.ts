@@ -34,7 +34,7 @@ async function launch(answers: string[]): Promise<{ app: ElectronApplication; pa
   fs.writeFileSync(path.join(root, 'notes.txt'), lines)
   const model = await fakeModel(answers)
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ provider: 'local', baseUrls: { local: model.url }, lastProject: root }))
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, ANVIL_HIDDEN: '1', ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
   const page = await app.firstWindow()
   const errors: string[] = []
   // Monaco throws this one from its own diff timer when a view closes. It has no effect on the app.
@@ -388,7 +388,7 @@ test('everything except the agent works with no model and no API keys', async ()
   fs.writeFileSync(path.join(root, 'a.ts'), 'export const n: number = 1\n')
   // Nothing is listening on this port, so no model can answer.
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ provider: 'local', baseUrls: { local: 'http://127.0.0.1:9/v1' }, lastProject: root }))
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, ANVIL_HIDDEN: '1', ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
   const page = await app.firstWindow()
   const errors: string[] = []
   page.on('pageerror', (e) => { if (e.message !== 'no diff result available') errors.push(e.message) })
@@ -476,7 +476,7 @@ test('chat and pending changes survive a restart', async () => {
   const data = (await first.app.evaluate(() => process.env.ANVIL_DATA_DIR))!
   await first.app.close()
 
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, ANVIL_HIDDEN: '1', ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
   const page = await app.firstWindow()
   await expect(page.locator('.msg.user')).toHaveText('write it')
   await expect(page.locator('.badge')).toHaveText('1')
@@ -828,7 +828,7 @@ test('a separate window opens its own project, and HTML tags close themselves', 
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-data-'))
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'second-window-')))
   fs.writeFileSync(path.join(root, 'page.html'), '')
-  const app = await electron.launch({ args: ['.', '--project', root], env: { ...process.env, ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
+  const app = await electron.launch({ args: ['.', '--project', root], env: { ...process.env, ANVIL_HIDDEN: '1', ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
   const page = await app.firstWindow()
   await expect(page.locator('.tree-row', { hasText: 'page.html' })).toBeVisible()
   await page.locator('.tree-row', { hasText: 'page.html' }).click()
@@ -863,7 +863,7 @@ test('workspace: several folders and repositories, .vscode files, menu bar, zen,
     run('commit', '-qm', `first in ${repo}`)
   }
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-data-'))
-  const app = await electron.launch({ args: ['.', '--project', path.join(base, 'all.code-workspace')], env: { ...process.env, ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
+  const app = await electron.launch({ args: ['.', '--project', path.join(base, 'all.code-workspace')], env: { ...process.env, ANVIL_HIDDEN: '1', ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
   const page = await app.firstWindow()
   const menu = (id: string) => app.evaluate(({ BrowserWindow }, value) => BrowserWindow.getAllWindows()[0].webContents.send('anvil:event', { type: 'menu', id: value }), id)
 
@@ -946,7 +946,7 @@ test('open tabs come back after a restart', async () => {
   const data = (await first.app.evaluate(() => process.env.ANVIL_DATA_DIR))!
   await first.page.waitForTimeout(200)
   await first.app.close()
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, ANVIL_HIDDEN: '1', ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' } })
   const page = await app.firstWindow()
   await expect(page.locator('.tab.active')).toContainText('notes.txt', { timeout: 8000 })
   await app.close()
