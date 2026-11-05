@@ -15,6 +15,7 @@ import type { SettingsTab } from './Settings'
 import { Sidebar, type SidebarTab } from './Sidebar'
 import type { PanelView } from './Terminal'
 import { fuzzyFilter } from '../../shared/fuzzy'
+import { eventToKey, keyFromLabel, prettyKey, type KeyMap } from '../../shared/keybindings'
 
 // Loaded on first use, so opening the app doesn't wait for them.
 const SettingsModal = lazy(() => import('./Settings').then((m) => ({ default: m.SettingsModal })))
@@ -94,15 +95,69 @@ function NamePrompt({ title, placeholder, initial, onDone, onClose }: { title: s
   )
 }
 
-function Shortcuts({ commands, onClose }: { commands: Command[]; onClose(): void }) {
+function Shortcuts({ commands, keybindings, onChange, onError, onClose }: { commands: Command[]; keybindings: KeyMap; onChange(next: KeyMap): void; onError(e: unknown): void; onClose(): void }) {
+  const mac = api.platform === 'darwin'
   const [query, setQuery] = useState('')
-  const list = commands.filter((c) => c.keys && `${c.label} ${c.keys}`.toLowerCase().includes(query.toLowerCase()))
+  const [recording, setRecording] = useState<string | null>(null)
+  const [note, setNote] = useState('')
+  const keyOf = (c: Command) => (c.id in keybindings ? keybindings[c.id] : keyFromLabel(c.keys) ?? '')
+  const rows: Command[] = [
+    ...commands.filter((c) => !c.id.includes(':')),
+    // Editor commands that came from an import have no row of their own.
+    ...Object.keys(keybindings).filter((id) => id.startsWith('editor:')).map((id) => ({ id, label: id.slice(7), run: () => {} }))
+  ]
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  const list = rows.filter((c) => {
+    const key = keyOf(c)
+    const text = `${c.label} ${key} ${key ? prettyKey(key, mac) : ''}`.toLowerCase()
+    return words.every((w) => text.includes(w))
+  })
+  useEffect(() => {
+    if (!recording) return
+    const onKey = (e: KeyboardEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.key === 'Escape') return setRecording(null)
+      const key = eventToKey(e)
+      if (!key) return
+      const taken = rows.find((c) => c.id !== recording && keyOf(c) === key)
+      const next = { ...keybindings, [recording]: key }
+      if (taken) next[taken.id] = ''
+      setNote(taken ? `${prettyKey(key, mac)} was on "${taken.label}", which now has no shortcut.` : '')
+      onChange(next)
+      setRecording(null)
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  })
+  const importKeys = () => {
+    void api.importVscodeKeybindings(rows.map((c) => c.id)).then((r) => {
+      onChange({ ...keybindings, ...r.bindings })
+      setNote(`Imported ${r.applied} shortcut${r.applied === 1 ? '' : 's'} from VS Code.${r.skipped.length ? ` ${r.skipped.length} couldn't be used: they're for other commands or take two steps.` : ''}`)
+    }).catch(onError)
+  }
   return (
     <div className="modal-wrap top" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="palette" role="dialog" aria-label="Keyboard shortcuts">
-        <input id="shortcut-search" autoFocus value={query} spellCheck={false} placeholder="Search keyboard shortcuts" onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') onClose() }} />
+      <div className="palette shortcuts-page" role="dialog" aria-label="Keyboard shortcuts">
+        <input id="shortcut-search" autoFocus value={query} spellCheck={false} placeholder="Search commands and shortcuts" onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape' && !recording) onClose() }} />
+        <div className="shortcut-tools">
+          <button onClick={importKeys}>Import from VS Code</button>
+          {Object.keys(keybindings).length > 0 && <button onClick={() => { onChange({}); setNote('Shortcuts are back to their defaults.') }}>Reset all</button>}
+          <span className="shortcut-note" role="status">{recording ? 'Press the new shortcut, or Esc to cancel.' : note}</span>
+        </div>
         <div className="palette-list">
-          {list.map((c) => <div key={c.id} className="pop-row"><span className="pop-title">{c.label}</span><kbd>{c.keys}</kbd></div>)}
+          {list.map((c) => {
+            const key = keyOf(c)
+            return (
+              <div key={c.id} className="pop-row shortcut-row">
+                <span className="pop-title">{c.label}</span>
+                {c.id in keybindings && <button className="link" aria-label={`Reset ${c.label}`} onClick={() => { const next = { ...keybindings }; delete next[c.id]; onChange(next) }}>Reset</button>}
+                <button className={`shortcut-key ${recording === c.id ? 'on' : ''}`} aria-label={`Change shortcut for ${c.label}`} onClick={() => setRecording(c.id)}>
+                  {recording === c.id ? 'Press keys…' : key ? prettyKey(key, mac) : 'Add'}
+                </button>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
@@ -427,7 +482,7 @@ export function App() {
           break
         case 'tree':
           setRevision((r) => r + 1)
-          if (event.filesChanged) void api.listFiles().then(setFiles).catch(() => {})
+          if (event.filesChanged !== false) void api.listFiles().then(setFiles).catch(() => {})
           break
         case 'context':
           setContext({ tokens: event.tokens, limit: event.limit })
@@ -538,6 +593,48 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [project, settings, busy, onError, showChat])
 
+  // Custom shortcuts run first, so they can win over the built-in ones and the editor's own keys.
+  useEffect(() => {
+    const custom = settings?.keybindings
+    if (!custom || !Object.keys(custom).length) return
+    const byKey = new Map(Object.entries(custom).filter(([, key]) => key).map(([id, key]) => [key, id]))
+    const freed = new Set(defaultCommandsRef.current.filter((c) => c.id in custom).map((c) => keyFromLabel(c.keys)).filter((k): k is string => !!k && !byKey.has(k)))
+    const onKey = (e: KeyboardEvent) => {
+      const key = eventToKey(e)
+      if (!key) return
+      const id = byKey.get(key)
+      if (id) {
+        e.preventDefault()
+        e.stopPropagation()
+        if (id.startsWith('editor:')) void store.runAction(id.slice(7))
+        else commandsRef.current.find((c) => c.id === id)?.run()
+      } else if (freed.has(key)) {
+        e.stopPropagation() // the command that had this key has moved to another
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [settings?.keybindings])
+
+  // Edits left over from a crash, when auto-save was off.
+  const [recovery, setRecovery] = useState<{ path: string; text: string }[]>([])
+  useEffect(() => {
+    setRecovery([])
+    if (project) void api.recoveryList().then(setRecovery).catch(() => {})
+  }, [project?.root])
+  const restoreEdits = () => {
+    const found = recovery
+    setRecovery([])
+    void Promise.all(found.map((copy) => store.restoreCopy(copy.path, copy.text))).then(() => {
+      setTabs((open) => [...new Set([...open, ...found.map((copy) => copy.path)])])
+      setSelected(found[0]?.path ?? null)
+    }).catch(onError)
+  }
+  const discardEdits = () => {
+    for (const copy of recovery) void api.recoveryClear(copy.path).catch(onError)
+    setRecovery([])
+  }
+
   const clearCommand = useCallback(() => setTerminalCommand(null), [])
   // Shown straight away, so switches and number boxes respond without waiting for the save.
   const update = (patch: Partial<Settings>) => {
@@ -629,8 +726,16 @@ export function App() {
     }).catch(onError)
   }).catch(onError)
 
+  const openClaudeCode = () => void api.claudeCodeCommand().then((command) => {
+    if (command) {
+      setPanelView('terminal')
+      setTerminalOpen(true)
+      setTerminalCommand(command)
+    } else if (window.confirm("Claude Code isn't installed on this computer. Open its install guide?")) void api.openClaudeCodeGuide()
+  }).catch(onError)
   const gitAction = (name: string, ...args: unknown[]) => void api.gitOp(name, ...args).catch(onError)
-  const commands: Command[] = [
+  const allCommands: Command[] = [
+    { id: 'claude-code', label: 'Open Claude Code in the terminal', run: openClaudeCode },
     { id: 'open-file', label: 'Go to file', keys: `${MOD}P`, run: () => { void api.listFiles().then(setFiles); setQuick(true) } },
     { id: 'open-folder', label: 'Open a project', run: open },
     { id: 'new-window', label: 'Open a project in a new window', keys: `${SHIFT}${MOD}N`, run: () => void api.newWindow().catch(onError) },
@@ -691,8 +796,12 @@ export function App() {
     { id: 'new-chat', label: 'New chat', keys: `${MOD}N`, run: () => void api.newChat().then(showChat).catch(onError) }
   ]
   askSaveRef.current = askSaveAs
+  const customKeys = settings?.keybindings ?? {}
+  const commands = allCommands.map((c) => (c.id in customKeys ? { ...c, keys: customKeys[c.id] ? prettyKey(customKeys[c.id], api.platform === 'darwin') : undefined } : c))
   const commandsRef = useRef(commands)
   commandsRef.current = commands
+  const defaultCommandsRef = useRef(allCommands)
+  defaultCommandsRef.current = allCommands
 
   return (
     <div className={`app platform-${api.platform} ${zen ? 'zen' : ''}`} onKeyDown={(e) => { if (e.key === 'Escape' && zen) setZen(false) }}>
@@ -703,6 +812,7 @@ export function App() {
         {project && <button className="ghost project" title={project.folders ? project.folders.join(', ') : project.root} onClick={open}>{project.name}</button>}
         {branch && <button className="ghost pill" title="Open Git" onClick={() => setTab('git')}><Icon name="branch" size={12} />{branch}</button>}
         <span className="spacer" />
+        {project && <button className="ghost pill claude-open" title="Open Claude Code in the terminal. It uses its own sign-in." onClick={openClaudeCode}>Claude Code</button>}
         {project && <button className={`icon-btn ${showAgent ? 'on' : ''}`} aria-label="Agent panel" title={`${showAgent ? 'Hide' : 'Show'} the agent (${MOD}L)`} onClick={() => update({ showAgent: !showAgent })}><Icon name="sparkle" /></button>}
         {showAgent && <button className={`model ${status}`} title="Change model" onClick={() => setModal(provider)}>
           <span className="dot" />
@@ -748,6 +858,13 @@ export function App() {
               onReset={() => { glide(); update({ sideWidth: DEFAULT_SETTINGS.sideWidth }) }}
             />
             <div className="center">
+              {recovery.length > 0 && (
+                <div className="banner notice recovery" role="status">
+                  <b>Unsaved edits found in {recovery.length === 1 ? recovery[0].path : `${recovery.length} files`}</b>
+                  <button className="primary" onClick={restoreEdits}>Restore</button>
+                  <button onClick={discardEdits}>Discard</button>
+                </div>
+              )}
               <div className="center-top" ref={centerTop} style={{ '--split-w': `${splitWidth}px` } as CSSProperties}>
                 <div className="editor-group" onMouseDownCapture={() => { activeGroup.current = 1 }} onFocusCapture={() => { activeGroup.current = 1 }}>
                   <EditorPane path={selected} tabs={tabs} change={change} revision={revision} gitDiff={gitDiff} commitSha={commitSha} onHistory={openHistory} reveal={reveal} editorSettings={editorSettings} themeName={themeName} onCursor={setCursor} onSelect={(t) => { setSelected(t); setGitDiff(false); setCommitSha(null) }} onClose={closeTab} onError={onError} cursorStyle={settings?.cursorStyle ?? 'line'} stickyScroll={settings?.stickyScroll !== false} fixLint={!!settings?.fixOnSave} onCloseOthers={(at, which) => closeMany(tabs, at, which, closeTab)} onSplit={openSplit} onReorder={(from, to) => setTabs((t) => reorder(t, from, to))} />
@@ -801,7 +918,7 @@ export function App() {
       {quick && <QuickOpen files={files} onClose={() => setQuick(false)} onPick={(f) => { pickFile(f); setQuick(false) }} />}
       {palette && <CommandPalette commands={commands} onClose={() => setPalette(false)} />}
       {taskPicker && <CommandPalette commands={taskPicker} placeholder="Choose a task to run" onClose={() => setTaskPicker(null)} />}
-      {showShortcuts && <Shortcuts commands={commands} onClose={() => setShowShortcuts(false)} />}
+      {showShortcuts && <Shortcuts commands={commands} keybindings={settings?.keybindings ?? {}} onChange={(next) => update({ keybindings: next })} onError={onError} onClose={() => setShowShortcuts(false)} />}
       {prompt && <NamePrompt title={prompt.title} placeholder={prompt.placeholder} initial={prompt.initial} onDone={prompt.run} onClose={() => setPrompt(null)} />}
       {modal && settings && <Suspense fallback={null}><SettingsModal settings={settings} initial={modal} assets={assets} onImported={loadAssets} onSettings={update} onStatus={poll} onClose={() => setModal(null)} onError={onError} hasProject={!!project} onRunInTerminal={(command) => { setModal(null); setTerminalOpen(true); setTerminalCommand(command) }} /></Suspense>}
     </div>

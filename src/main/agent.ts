@@ -7,7 +7,7 @@ import type { ChatMessage, ModelClient, ModelResult } from './model'
 import { TOOL_NAMES, ToolTagParser, type ParsedCall } from './protocol'
 import { buildUserMessage, systemPrompt } from './context'
 import type { CheckResult } from './tscheck'
-import { applyEdit, assertWritable, listFilesTool, readFileTool, repairArgs, runCommand, safePath, searchTool } from './tools'
+import { applyEdit, assertNotProtected, assertWritable, listFilesTool, readFileTool, repairArgs, runCommand, safePath, searchTool } from './tools'
 
 const MAX_STEPS = 80
 const MAX_REPEATS = 3
@@ -42,6 +42,7 @@ export class Agent {
   history: ChatMessage[]
   private abort: AbortController | null = null
   private mode: AgentMode = 'agent'
+  private steering: string[] = []
 
   constructor(private deps: AgentDeps, history?: ChatMessage[]) {
     this.history = history?.length ? history : [{ role: 'system', content: systemPrompt(deps.root) }]
@@ -49,6 +50,11 @@ export class Agent {
 
   cancel(): void {
     this.abort?.abort()
+  }
+
+  /** A message sent while the agent works. The model reads it before its next step. */
+  steer(text: string): void {
+    this.steering.push(text)
   }
 
   /** Drops the oldest whole turns, then the oldest tool steps, so the conversation fits the model. */
@@ -91,6 +97,7 @@ export class Agent {
 
     try {
       for (let step = 0; step < MAX_STEPS; step++) {
+        for (const message of this.steering.splice(0)) this.history.push({ role: 'user', content: message })
         this.fit()
         deps.context?.(Math.round(tokensIn(this.history)), deps.settings().contextTokens)
         const { result, call, previewId } = await this.callModel(temperature, signal)
@@ -98,6 +105,7 @@ export class Agent {
         this.history.push({ role: 'assistant', content: call ? `${result.textBefore}${call.raw}` : result.content })
 
         if (!call) {
+          if (this.steering.length) continue
           if (!result.content.trim()) {
             deps.emitItem({ kind: 'error', id: newId(), text: 'The model returned an empty answer.' })
             return
@@ -228,8 +236,11 @@ export class Agent {
     if (this.mode === 'ask') throw new Error('Tools are off in Ask mode. Answer directly.')
     if (this.mode === 'plan' && !['read_file', 'list_files', 'search_code'].includes(name)) throw new Error('Plan mode is read-only. Write the plan instead of changing anything.')
     switch (name) {
-      case 'read_file':
-        return { output: readFileTool(root, safePath(root, args.path), Number(args.start_line) || 1), wrote: false }
+      case 'read_file': {
+        const rel = safePath(root, args.path)
+        assertNotProtected(root, rel)
+        return { output: readFileTool(root, rel, Number(args.start_line) || 1), wrote: false }
+      }
       case 'list_files':
         return { output: listFilesTool(root, safePath(root, args.path ?? '.')), wrote: false }
       case 'search_code':
@@ -237,6 +248,7 @@ export class Agent {
       case 'write_file': {
         const rel = safePath(root, args.path)
         assertWritable(rel)
+        assertNotProtected(root, rel)
         if (typeof args.content !== 'string') throw new Error('content is required')
         const file = path.join(root, rel)
         if (fs.existsSync(file) && fs.readFileSync(file, 'utf8') === args.content) return { output: `${rel} already has exactly this content, so nothing changed.`, wrote: false }
@@ -246,6 +258,7 @@ export class Agent {
       case 'edit_file': {
         const rel = safePath(root, args.path)
         assertWritable(rel)
+        assertNotProtected(root, rel)
         const current = fs.readFileSync(path.join(root, rel), 'utf8')
         this.write(rel, applyEdit(current, args.old_string, args.new_string), touched)
         return { output: `Edited ${rel}.`, wrote: true }

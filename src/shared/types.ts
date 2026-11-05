@@ -1,3 +1,5 @@
+import type { KeybindingImport, KeyMap } from './keybindings'
+
 export interface EditorSettings {
   fontSize: number
   tabSize: number
@@ -26,6 +28,7 @@ export interface Settings {
   temperature: number
   theme: 'system' | 'dark' | 'light'
   editor: EditorSettings
+  keybindings: KeyMap
   showAgent: boolean
   showSide: boolean
   sideWidth: number
@@ -48,6 +51,7 @@ export const DEFAULT_SETTINGS: Settings = {
   provider: 'local',
   models: { local: 'mlx-community/Qwen3.5-9B-4bit', anthropic: 'claude-opus-5-5', openai: '', custom: '' },
   baseUrls: { local: 'http://127.0.0.1:8080/v1', anthropic: '', openai: 'https://api.openai.com/v1', custom: 'http://127.0.0.1:1234/v1' },
+  keybindings: {},
   effort: 'high',
   openaiEffort: 'default',
   autoAcceptEdits: false,
@@ -484,6 +488,13 @@ export interface AnvilApi {
   deletePath(path: string): Promise<void>
   searchProject(query: string, options: SearchOptions): Promise<SearchHit[]>
   filesExist(paths: string[]): Promise<string[]>
+  steer(text: string): Promise<void>
+  claudeCodeCommand(): Promise<string | null>
+  openClaudeCodeGuide(): Promise<void>
+  importVscodeKeybindings(known: string[]): Promise<KeybindingImport>
+  recoverySave(path: string, text: string): Promise<void>
+  recoveryClear(path: string): Promise<void>
+  recoveryList(): Promise<{ path: string; text: string }[]>
   gitStatus(): Promise<GitStatus>
   gitInit(): Promise<void>
   gitStage(paths: string[], stage: boolean): Promise<void>

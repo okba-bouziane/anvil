@@ -717,3 +717,18 @@ button.keep,button.undo { color:var(--text); }
 .crash h1 { font-size:20px; margin:0; }
 .crash p { color:var(--text2); max-width:460px; margin:0; line-height:1.5; }
 .crash pre { max-width:680px; max-height:180px; overflow:auto; font-size:12px; color:var(--text3); white-space:pre-wrap; }
+
+.setting-row[hidden] { display:none; }
+.settings-search { margin-left:auto; margin-right:10px; width:220px; }
+.settings-nomatch { position:absolute; left:200px; top:70px; color:var(--text3); font-size:13px; z-index:1; }
+.shortcuts-page { width:min(680px, 92vw); }
+.shortcut-tools { display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--line); }
+.shortcut-note { color:var(--text3); font-size:12px; min-width:0; }
+.shortcut-row { gap:8px; }
+.shortcut-key { min-width:74px; font-family:var(--mono, monospace); font-size:12px; padding:3px 8px; }
+.shortcut-key.on { background:var(--text); color:var(--well); }
+.queue { display:flex; flex-direction:column; gap:4px; padding:0 12px 6px; }
+.queue-row { display:flex; align-items:center; gap:8px; background:var(--raised); border:1px solid var(--line2); border-radius:8px; padding:4px 6px 4px 10px; font-size:12.5px; }
+.queue-text { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text2); }
+.banner.recovery { gap:10px; }
+.banner.recovery b { margin-right:auto; font-weight:600; }

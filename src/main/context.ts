@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { AgentMode } from '../shared/types'
 import { TOOL_INSTRUCTIONS } from './protocol'
-import { readFileTool, safePath, walkFiles } from './tools'
+import { isProtected, readFileTool, safePath, walkFiles } from './tools'
 
 const TREE_LIMIT = 200
 const OS_NAME = process.platform === 'win32' ? 'Windows (commands run in cmd.exe)' : process.platform === 'darwin' ? 'macOS' : 'Linux'
@@ -11,6 +11,7 @@ const STOP = new Set(['the', 'and', 'for', 'with', 'this', 'that', 'add', 'make'
 export function projectTree(root: string): string {
   const files: string[] = []
   for (const rel of walkFiles(root)) {
+    if (isProtected(root, rel)) continue
     files.push(rel)
     if (files.length > TREE_LIMIT) {
       files.pop()
@@ -59,6 +60,7 @@ export function relatedFiles(root: string, request: string, limit = 5): string[]
   if (!terms.length) return []
   const scored: { rel: string; score: number }[] = []
   for (const rel of walkFiles(root)) {
+    if (isProtected(root, rel)) continue
     const name = rel.toLowerCase()
     let score = terms.reduce((n, t) => n + (name.includes(t) ? 5 : 0), 0)
     const file = path.join(root, rel)

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import type { EditorSettings, Effort, OpenAiEffort, ImportedAssets, LocalSetup, ModelOption, ProviderId, Settings, VscodeImport } from '../../shared/types'
 import { PROVIDER_LABEL } from '../../shared/types'
 import { Icon } from './Icon'
@@ -154,6 +154,16 @@ export function SettingsModal({ settings, initial, assets, onImported, onSetting
   const [setup, setSetup] = useState<LocalSetup | null>(null)
   useEffect(() => { void api.localSetup().then(setSetup).catch(onError) }, [onError])
   const [tab, setTab] = useState<SettingsTab>(initial)
+  const [find, setFind] = useState('')
+  const [noMatch, setNoMatch] = useState(false)
+  const body = useRef<HTMLDivElement>(null)
+  // Works on what's on screen, so a new setting is searchable with no extra list to keep up to date.
+  useEffect(() => {
+    const words = find.toLowerCase().split(/\s+/).filter(Boolean)
+    const rows = [...(body.current?.querySelectorAll<HTMLElement>('.setting-row') ?? [])]
+    for (const row of rows) row.hidden = !words.every((w) => (row.textContent ?? '').toLowerCase().includes(w))
+    setNoMatch(words.length > 0 && rows.length > 0 && rows.every((row) => row.hidden))
+  })
   const [models, setModels] = useState<ModelOption[]>([])
   const [listError, setListError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -207,9 +217,11 @@ export function SettingsModal({ settings, initial, assets, onImported, onSetting
       <div className="modal" role="dialog" aria-label="Models and settings">
         <div className="modal-head">
           <h2>Models and settings</h2>
+          <input id="settings-search" className="settings-search" type="search" value={find} spellCheck={false} placeholder="Search settings" aria-label="Search settings" onChange={(e) => { setFind(e.target.value); if (e.target.value) setTab('editor') }} />
           <button className="icon-btn" aria-label="Close" onClick={onClose}><Icon name="close" /></button>
         </div>
-        <div className="modal-body">
+        <div className="modal-body" ref={body}>
+          {noMatch && <div className="settings-nomatch" role="status">No settings match "{find}".</div>}
           <nav className="modal-nav">
             {PROVIDERS.map((p) => (
               <button key={p} className={tab === p ? 'active' : ''} onClick={() => setTab(p)}>

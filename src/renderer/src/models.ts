@@ -11,6 +11,8 @@ interface Entry {
   savedVersion: number
   wasDirty: boolean
   lspTimer: ReturnType<typeof setTimeout> | null
+  copyTimer: ReturnType<typeof setTimeout> | null
+  hasCopy: boolean
   view: monaco.editor.ICodeEditorViewState | null
   timer: ReturnType<typeof setTimeout> | null
   intelTimer: ReturnType<typeof setTimeout> | null
@@ -59,6 +61,14 @@ const isDirty = (e: Entry) => e.model.getAlternativeVersionId() !== e.savedVersi
 const markSaved = (e: Entry) => {
   e.savedVersion = e.model.getAlternativeVersionId()
   e.wasDirty = false
+}
+/** The recovery copy exists only while a file has edits that aren't on disk. */
+const dropCopy = (path: string, e: Entry) => {
+  if (e.copyTimer) clearTimeout(e.copyTimer)
+  e.copyTimer = null
+  if (!e.hasCopy) return
+  e.hasCopy = false
+  void api.recoveryClear(path).catch(() => {})
 }
 
 function setMarkers(path: string, model: monaco.editor.ITextModel, list: IntelDiagnostic[]): void {
@@ -175,7 +185,7 @@ export const store = {
     const again = entries.get(path)
     if (again) return again.model
     const model = monaco.editor.createModel(text, undefined, uriOf(path))
-    const entry: Entry = { model, saved: text, savedVersion: model.getAlternativeVersionId(), wasDirty: false, lspTimer: null, view: null, timer: null, intelTimer: null }
+    const entry: Entry = { model, saved: text, savedVersion: model.getAlternativeVersionId(), wasDirty: false, lspTimer: null, copyTimer: null, hasCopy: false, view: null, timer: null, intelTimer: null }
     entries.set(path, entry)
     model.onDidChangeContent(() => {
       // Tab dots only change when a file becomes edited or goes back to its saved state.
@@ -191,6 +201,13 @@ export const store = {
       entry.intelTimer = setTimeout(() => { void syncIntel(path, entry).catch(() => {}); void syncLint(path, entry).catch(() => {}) }, 350)
       if (entry.timer) clearTimeout(entry.timer)
       if (autoSave) entry.timer = setTimeout(() => void store.save(path).catch(onError), 900)
+      else if (isDirty(entry)) {
+        if (entry.copyTimer) clearTimeout(entry.copyTimer)
+        entry.copyTimer = setTimeout(() => {
+          entry.hasCopy = true
+          void api.recoverySave(path, model.getValue()).catch(() => {})
+        }, 1200)
+      } else dropCopy(path, entry)
     })
     void syncIntel(path, entry).catch(() => {})
     void syncLint(path, entry).catch(() => {})
@@ -212,6 +229,7 @@ export const store = {
     const version = e.model.getAlternativeVersionId()
     if (text === e.saved) {
       markSaved(e)
+      dropCopy(path, e)
       return
     }
     await api.writeFile(path, text)
@@ -219,6 +237,7 @@ export const store = {
     // Typing during the save leaves the file edited.
     e.savedVersion = version
     e.wasDirty = isDirty(e)
+    if (!e.wasDirty) dropCopy(path, e)
     notify()
   },
   async saveAs(path: string, target: string) {
@@ -234,7 +253,18 @@ export const store = {
     e.saved = text
     e.model.setValue(text)
     markSaved(e)
+    dropCopy(path, e)
     notify()
+  },
+  /** Puts back edits saved by the recovery copy. They stay unsaved until the person saves. */
+  async restoreCopy(path: string, text: string) {
+    const model = await store.ensure(path)
+    model.setValue(text)
+    const e = entries.get(path)
+    if (e) {
+      e.hasCopy = true
+      if (e.timer) clearTimeout(e.timer)
+    }
   },
   async saveAll() {
     await Promise.all([...entries.keys()].map((p) => store.save(p)))
@@ -258,9 +288,13 @@ export const store = {
     }
   },
 
-  close(path: string) {
+  /** Closing a tab means the edits are done with. Leaving the project keeps their recovery copy. */
+  close(path: string, keepCopy = false) {
     const e = entries.get(path)
     if (!e) return
+    if (keepCopy && e.copyTimer) clearTimeout(e.copyTimer)
+    else if (!keepCopy) dropCopy(path, e)
+    if (e.lspTimer) clearTimeout(e.lspTimer)
     if (e.timer) clearTimeout(e.timer)
     if (e.intelTimer) clearTimeout(e.intelTimer)
     e.model.dispose()
@@ -275,7 +309,7 @@ export const store = {
     notify()
   },
   reset() {
-    for (const path of [...entries.keys()]) store.close(path)
+    for (const path of [...entries.keys()]) store.close(path, true)
     problems.clear()
     notify()
   }

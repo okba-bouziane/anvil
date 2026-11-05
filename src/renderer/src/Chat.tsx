@@ -284,10 +284,23 @@ export function Chat(p: ChatProps) {
     requestAnimationFrame(() => input.current?.setSelectionRange(next, next))
   }
 
+  // Messages typed while the agent works wait here, and go out in order when it finishes.
+  const [queued, setQueued] = useState<{ id: number; text: string }[]>([])
+  useEffect(() => {
+    if (busy || !queued.length || !hasProject || !ready) return
+    const [next, ...rest] = queued
+    setQueued(rest)
+    stick.current = true
+    void p.onBeforeSend().then(() => api.send(next.text, p.activeFile, mode)).catch(onError)
+  }, [busy, queued.length])
   const submit = () => {
     const value = text.trim()
-    if (!value || busy || !hasProject || !ready) return
+    if (!value || !hasProject || !ready) return
     setText('')
+    if (busy) {
+      setQueued((list) => [...list, { id: Date.now(), text: value }])
+      return
+    }
     stick.current = true
     // The model should see what's on screen, including edits not saved yet.
     void p.onBeforeSend().then(() => api.send(value, p.activeFile, mode)).catch(onError)
@@ -374,6 +387,17 @@ export function Chat(p: ChatProps) {
         </div>
       )}
 
+      {queued.length > 0 && (
+        <div className="queue" aria-label="Waiting messages">
+          {queued.map((q) => (
+            <div className="queue-row" key={q.id}>
+              <span className="queue-text" title={q.text}>{q.text}</span>
+              <button onClick={() => { setQueued((list) => list.filter((m) => m.id !== q.id)); void api.steer(q.text).catch(onError) }} title="The agent reads this before its next step" disabled={!busy}>Send now</button>
+              <button className="icon-btn" aria-label={`Remove ${q.text}`} onClick={() => setQueued((list) => list.filter((m) => m.id !== q.id))}><Icon name="close" size={12} /></button>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="composer">
         <ChangesBar changes={p.changes} selected={p.selectedFile} onOpen={p.onOpenFile} onError={onError} />
         {matches.length > 0 && (

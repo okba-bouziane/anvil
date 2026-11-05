@@ -6,6 +6,8 @@ import type { AddressInfo } from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 
+const DEFAULT_EDITOR = { fontSize: 13, tabSize: 2, wordWrap: false, minimap: false, formatOnSave: false }
+
 /** A scripted stand-in for the model, so these tests check the app and not what the model decides. */
 function fakeModel(answers: string[]) {
   const server = http.createServer((req, res) => {
@@ -950,4 +952,106 @@ test('open tabs come back after a restart', async () => {
   const page = await app.firstWindow()
   await expect(page.locator('.tab.active')).toContainText('notes.txt', { timeout: 8000 })
   await app.close()
+})
+
+test('custom shortcuts: change one, use it, and the old key stops working', async () => {
+  const { page, close } = await launch([])
+  const mod = process.platform === 'darwin' ? 'Meta' : 'Control'
+  await page.locator('.tree-row', { hasText: 'notes.txt' }).click()
+  await page.keyboard.press(`${mod}+Shift+P`)
+  await page.locator('#command-palette').fill('Keyboard shortcuts')
+  await page.locator('#command-palette').press('Enter')
+  await page.locator('#shortcut-search').fill('Show or hide the terminal')
+  await page.getByRole('button', { name: 'Change shortcut for Show or hide the terminal' }).click()
+  await page.keyboard.press(`${mod}+Alt+K`)
+  await expect(page.locator('.shortcut-row', { hasText: 'Show or hide the terminal' })).toContainText('K')
+  await page.locator('#shortcut-search').press('Escape')
+  await page.locator('.monaco-editor').first().click()
+  await page.keyboard.press(`${mod}+Alt+K`)
+  await expect(page.locator('.xterm')).toBeVisible()
+  // Reload proves the choice was saved, and that the old key no longer toggles the terminal.
+  await page.reload()
+  await page.waitForSelector('.tree-row')
+  await page.keyboard.press(`${mod}+j`)
+  await page.waitForTimeout(400)
+  await expect(page.locator('.xterm')).toHaveCount(0)
+  await close()
+})
+
+test('the agent cannot read protected files, and is told why', async () => {
+  const { page, root, close } = await launch(['<read_file path=".env"></read_file>', 'I could not read it.'])
+  fs.writeFileSync(path.join(root, '.env'), 'TOKEN=abc123\n')
+  await ask(page, 'what is in the env file')
+  await expect(page.locator('.msg.assistant').last()).toContainText('I could not read it.')
+  await expect(page.locator('.tool.error')).toContainText('.env')
+  await close()
+})
+
+test('unsaved edits come back after the app stops without saving', async () => {
+  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-data-'))
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'anvil-proj-')))
+  fs.writeFileSync(path.join(root, 'notes.txt'), 'first\n')
+  fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ provider: 'local', lastProject: root, editor: { ...DEFAULT_EDITOR, autoSave: false } }))
+  const env = { ...process.env, ANVIL_HIDDEN: '1', ANVIL_DATA_DIR: data, ANVIL_MEMORY_SECRETS: '1' }
+  let app = await electron.launch({ args: ['.'], env })
+  let page = await app.firstWindow()
+  await page.locator('.tree-row', { hasText: 'notes.txt' }).click()
+  await page.locator('.monaco-editor').first().click()
+  await page.keyboard.type('EDITED ')
+  await page.waitForTimeout(1800)
+  // Skips the unsaved-work warning. Nothing saves on the way out, so this leaves the same state a crash does.
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.on('will-prevent-unload', (e) => e.preventDefault()))
+  await app.close()
+  app = await electron.launch({ args: ['.'], env })
+  page = await app.firstWindow()
+  await expect(page.locator('.recovery')).toContainText('notes.txt')
+  expect(fs.readFileSync(path.join(root, 'notes.txt'), 'utf8')).toBe('first\n')
+  await page.getByRole('button', { name: 'Restore' }).click()
+  await expect(page.locator('.view-lines').first()).toContainText('EDITED')
+  await app.close()
+})
+
+test('Settings can be searched', async () => {
+  const { page, close } = await launch([])
+  await page.locator('button.model').click()
+  await page.locator('#settings-search').fill('theme')
+  await expect(page.locator('.setting-row:visible', { hasText: 'Theme' }).first()).toBeVisible()
+  await expect(page.locator('.setting-row:visible', { hasText: 'Tab size' })).toHaveCount(0)
+  await page.locator('#settings-search').fill('zzzz')
+  await expect(page.locator('.settings-nomatch')).toBeVisible()
+  await close()
+})
+
+test('messages typed while the agent works wait, and go out in order', async () => {
+  const { page, close } = await launch(['x'.repeat(4000), 'Second answer.'])
+  await ask(page, 'first')
+  await expect(page.getByRole('button', { name: 'Stop', exact: true })).toBeVisible()
+  await ask(page, 'second question')
+  await expect(page.locator('.queue-row')).toContainText('second question')
+  await expect(page.locator('.msg.assistant').last()).toContainText('Second answer.', { timeout: 20_000 })
+  await expect(page.locator('.queue-row')).toHaveCount(0)
+  await close()
+})
+
+test('Send now reaches the agent before its next step', async () => {
+  const { page, close } = await launch(['x'.repeat(3000), 'Saw the correction.'])
+  await ask(page, 'first')
+  await expect(page.getByRole('button', { name: 'Stop', exact: true })).toBeVisible()
+  await ask(page, 'use tabs instead')
+  await page.locator('.queue-row').getByRole('button', { name: 'Send now' }).click()
+  await expect(page.locator('.msg.user').last()).toContainText('use tabs instead')
+  await expect(page.locator('.msg.assistant').last()).toContainText('Saw the correction.', { timeout: 20_000 })
+  await close()
+})
+
+test('Go to File finds a file by scattered letters', async () => {
+  const { page, root, close } = await launch([])
+  fs.mkdirSync(path.join(root, 'src'))
+  fs.writeFileSync(path.join(root, 'src/user-card.tsx'), 'x')
+  const mod = process.platform === 'darwin' ? 'Meta' : 'Control'
+  await page.waitForTimeout(600)
+  await page.keyboard.press(`${mod}+p`)
+  await page.locator('#quick-open').fill('ucard')
+  await expect(page.locator('.palette')).toContainText('user-card.tsx')
+  await close()
 })

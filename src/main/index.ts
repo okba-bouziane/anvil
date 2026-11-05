@@ -13,6 +13,8 @@ import { importFromVscode, vscodePaths } from './vscode-import'
 import { downloadCommand, INSTALL_COMMAND, isServerInstalled, modelStatus, startModel, stopModel, stopOwnServer } from './model'
 import { clientFor, effectiveSettings, listModels, localModels } from './providers'
 import { Secrets } from './secrets'
+import { parseVscodeKeybindings, toAccelerator } from '../shared/keybindings'
+import { claudeCommand, findClaude } from './claude-code'
 import { claudeFolderFor, claudeSessionFile, listClaudeSessions, readClaudeSession } from './claude-import'
 import { loadSession, saveSession, type Chat } from './session'
 import { canRunMlx } from './platform'
@@ -251,7 +253,12 @@ function watchProject(root: string, folders: string[] | null): void {
 /* The menu bar sends each choice to the window, which runs the same command the palette would. */
 function buildMenu(): void {
   const run = (id: string) => () => send({ type: 'menu', id })
-  const item = (label: string, id: string, accelerator?: string): MenuItemConstructorOptions => ({ label, click: run(id), accelerator, registerAccelerator: false })
+  const item = (label: string, id: string, accelerator?: string): MenuItemConstructorOptions => ({
+    label,
+    click: run(id),
+    accelerator: id in settings.keybindings ? (settings.keybindings[id] ? toAccelerator(settings.keybindings[id], process.platform === 'darwin') ?? undefined : undefined) : accelerator,
+    registerAccelerator: false
+  })
   const recent: MenuItemConstructorOptions[] = settings.recentProjects.map((r) => ({ label: path.basename(r, '.code-workspace'), click: run(`recent:${r}`) }))
   const template: MenuItemConstructorOptions[] = [
     ...(process.platform === 'darwin' ? [{ role: 'appMenu' as const }] : []),
@@ -668,6 +675,7 @@ function handlers() {
     const { trustedProjects: _trusted, ...allowed } = patch
     settings = { ...settings, ...allowed }
     writeSettings()
+    if (allowed.keybindings) buildMenu()
     return settings
   })
   handle('modelStatus', status)
@@ -1235,6 +1243,61 @@ function handlers() {
       p.chats.push(last)
     }
     return last ? activate(p, last) : projectState()
+  })
+  handle('steer', (text: string) => {
+    const p = need()
+    if (!busy) throw new Error('The agent has finished. Send this as a new message.')
+    const item: UiItem = { kind: 'user', id: `u${Date.now()}`, text }
+    p.active.items.push(item)
+    send({ type: 'item', item })
+    p.agent.steer(text)
+    save()
+  })
+  handle('claudeCodeCommand', () => {
+    const file = findClaude()
+    return file ? claudeCommand(file) : null
+  })
+  handle('openClaudeCodeGuide', () => shell.openExternal('https://code.claude.com/docs/en/quickstart'))
+  handle('importVscodeKeybindings', (known: string[]) => {
+    const file = path.join(vscodePaths().user, 'keybindings.json')
+    if (!fs.existsSync(file)) throw new Error('No VS Code keybindings were found on this computer.')
+    const ids = new Set(known)
+    return parseVscodeKeybindings(fs.readFileSync(file, 'utf8'), (id) => ids.has(id))
+  })
+  const recoveryDir = (p: Project) => path.join(dataDir(), 'recovery', createHash('sha1').update(p.root).digest('hex'))
+  const recoveryFile = (p: Project, rel: string) => path.join(recoveryDir(p), `${createHash('sha1').update(rel).digest('hex')}.json`)
+  handle('recoverySave', (rel: string, text: string) => {
+    const p = need()
+    const safe = safePath(p.root, rel)
+    if (text.length > 5_000_000) return
+    fs.mkdirSync(recoveryDir(p), { recursive: true })
+    fs.writeFileSync(recoveryFile(p, safe), JSON.stringify({ path: safe, text }))
+  })
+  handle('recoveryClear', (rel: string) => {
+    const p = need()
+    fs.rmSync(recoveryFile(p, safePath(p.root, rel)), { force: true })
+  })
+  handle('recoveryList', () => {
+    const p = need()
+    const out: { path: string; text: string }[] = []
+    let names: string[] = []
+    try {
+      names = fs.readdirSync(recoveryDir(p))
+    } catch {
+      return out
+    }
+    for (const name of names) {
+      const file = path.join(recoveryDir(p), name)
+      try {
+        const copy = JSON.parse(fs.readFileSync(file, 'utf8')) as { path: string; text: string }
+        const onDisk = fs.readFileSync(path.join(p.root, safePath(p.root, copy.path)), 'utf8')
+        if (onDisk === copy.text) fs.rmSync(file, { force: true })
+        else out.push(copy)
+      } catch {
+        fs.rmSync(file, { force: true })
+      }
+    }
+    return out
   })
   handle('switchChat', (id: string) => {
     const p = need()

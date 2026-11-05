@@ -115,7 +115,7 @@ export function applyEdit(current: string, oldString: unknown, newString: unknow
 
 export function listFilesTool(root: string, rel: string): string {
   const entries = fs.readdirSync(path.join(root, rel), { withFileTypes: true })
-    .filter((e) => !IGNORED.has(e.name))
+    .filter((e) => !IGNORED.has(e.name) && !isProtected(root, path.join(rel, e.name)))
     .map((e) => (e.isDirectory() ? `${e.name}/` : e.name))
     .sort()
   return entries.join('\n') || '(empty folder)'
@@ -145,6 +145,7 @@ export function searchTool(root: string, query: unknown): string {
   if (typeof query !== 'string' || !query) throw new Error('query is required')
   const out: string[] = []
   for (const rel of walkFiles(root)) {
+    if (isProtected(root, rel)) continue
     const file = path.join(root, rel)
     if (fs.statSync(file).size > 500_000) continue
     const text = fs.readFileSync(file, 'utf8')
@@ -185,6 +186,44 @@ export function globToRegExp(glob: string): RegExp {
     else out += c.replace(/[.+^${}()|[\]\\]/g, '\\$&')
   }
   return new RegExp(`${anchored ? '^' : '(?:^|/)'}${out}(?:/|$)`, 'i')
+}
+
+/** Files the agent never gets to see or change, because they usually hold passwords and keys. */
+const SECRET_FILES = ['.env', '.env.*', '*.pem', '*.key', '*.p12', '*.pfx', '*.keystore', 'id_rsa', 'id_rsa.*', 'id_ed25519', 'id_ed25519.*', '.ssh/**', '**/.ssh/**', '.aws/**', '**/.aws/**', '.npmrc', '.netrc', '.pypirc', 'credentials.json', 'secrets.json', 'secrets.yaml', 'secrets.yml']
+const NOT_SECRET = ['.env.example', '.env.sample', '.env.template', '.env.dist']
+export const IGNORE_FILE = '.sindanignore'
+const ignoreCache = new Map<string, { mtime: number; lines: string[] }>()
+
+function ignoreLines(root: string): string[] {
+  const file = path.join(root, IGNORE_FILE)
+  let mtime = 0
+  try {
+    mtime = fs.statSync(file).mtimeMs
+  } catch {
+    return []
+  }
+  const cached = ignoreCache.get(root)
+  if (cached?.mtime === mtime) return cached.lines
+  const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith('#'))
+  ignoreCache.set(root, { mtime, lines })
+  return lines
+}
+
+export function isProtected(root: string, rel: string): boolean {
+  const file = rel.replaceAll('\\', '/').replace(/^\.\//, '')
+  const matches = (glob: string) => globToRegExp(glob).test(file)
+  let hidden = SECRET_FILES.some(matches) && !NOT_SECRET.some(matches)
+  // As in .gitignore, the last line that matches decides.
+  for (const line of ignoreLines(root)) {
+    if (line.startsWith('!')) {
+      if (matches(line.slice(1))) hidden = false
+    } else if (matches(line)) hidden = true
+  }
+  return hidden
+}
+
+export function assertNotProtected(root: string, rel: string): void {
+  if (isProtected(root, rel)) throw new Error(`${rel} is protected, so the agent can't use it. Ask the user for what you need, or they can change ${IGNORE_FILE}.`)
 }
 
 function pathFilter(options: SearchOptions): (rel: string) => boolean {
