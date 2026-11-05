@@ -18,6 +18,7 @@ beforeEach(() => {
   run('init', '-qb', 'main')
   run('config', 'user.email', 'dev@example.com')
   run('config', 'user.name', 'Dev')
+  run('config', 'core.autocrlf', 'false')
   write('a.txt', 'one\ntwo\nthree\n')
   commitAll('first')
 })

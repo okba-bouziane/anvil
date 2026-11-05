@@ -514,7 +514,8 @@ test('the logo hops while the model works and rests otherwise', async () => {
 })
 
 test('panels resize by dragging, remember their size, and double-click resets them', async () => {
-  const { page, close } = await launch([])
+  const { app, page, close } = await launch([])
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1512, 920))
   const side = page.locator('.sidebar')
   const chat = page.locator('.chat')
   const edges = page.getByRole('separator')

@@ -15,9 +15,14 @@ afterEach(() => { setScope(root, null); fs.rmSync(root, { recursive: true, force
 
 describe('workspace folders', () => {
   it('finds the shared parent', () => {
-    expect(commonParent(['/a/b/c', '/a/b/d'])).toBe('/a/b')
-    expect(commonParent(['/a/b'])).toBe('/a/b')
-    expect(commonParent(['/x/1', '/y/2'])).toBe('/')
+    const at = (...parts: string[]) => path.join(path.parse(root).root, ...parts)
+    expect(commonParent([at('a', 'b', 'c'), at('a', 'b', 'd')])).toBe(at('a', 'b'))
+    expect(commonParent([at('a', 'b')])).toBe(at('a', 'b'))
+    expect(commonParent([at('x', '1'), at('y', '2')])).toBe(path.parse(root).root)
+  })
+
+  it.runIf(process.platform === 'win32')('explains folders on different drives', () => {
+    expect(() => commonParent(['C:\\a', 'D:\\b'])).toThrow('same drive')
   })
 
   it('round-trips a workspace file and skips missing folders', () => {
@@ -84,7 +89,7 @@ describe('.vscode files', () => {
     write('.vscode/launch.json', '{ "configurations": [{ "name": "API", "type": "node", "request": "launch", "program": "${workspaceFolder}/a.js" }, { "name": "Py", "type": "debugpy", "request": "launch", "program": "${file}" }, { "name": "Go", "type": "go" }] }')
     const list = vscodeLaunch(root, null, 'x.py')
     expect(list.map((l) => l.name)).toEqual(['API', 'Py'])
-    expect(list[0].config).toMatchObject({ type: 'pwa-node', program: path.join(root, 'a.js'), cwd: root })
+    expect(list[0].config).toMatchObject({ type: 'pwa-node', program: `${root}/a.js`, cwd: root })
     expect(list[1].config).toMatchObject({ type: 'python', program: path.join(root, 'x.py') })
   })
 })

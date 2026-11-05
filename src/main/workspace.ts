@@ -15,7 +15,9 @@ export function commonParent(folders: string[]): string {
     if (parts.every((p) => p[i] === parts[0][i])) shared.push(parts[0][i])
     else break
   }
-  return shared.join(path.sep) || path.sep
+  if (!shared.length) throw new Error('All the folders in a workspace have to be on the same drive.')
+  if (shared.length === 1 && !shared[0]) return path.sep
+  return shared.length === 1 && /:$/.test(shared[0]) ? `${shared[0]}${path.sep}` : shared.join(path.sep)
 }
 
 /** Reads a .code-workspace file, the same format VS Code uses. Relative paths are relative to the file. */
