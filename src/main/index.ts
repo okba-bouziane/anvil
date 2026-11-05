@@ -13,6 +13,7 @@ import { importFromVscode, vscodePaths } from './vscode-import'
 import { downloadCommand, INSTALL_COMMAND, isServerInstalled, modelStatus, startModel, stopModel, stopOwnServer } from './model'
 import { clientFor, effectiveSettings, listModels, localModels } from './providers'
 import { Secrets } from './secrets'
+import { claudeFolderFor, claudeSessionFile, listClaudeSessions, readClaudeSession } from './claude-import'
 import { loadSession, saveSession, type Chat } from './session'
 import { canRunMlx } from './platform'
 import { assertWritable, findScripts, replaceInFiles, safePath, searchProject, setScope, walkFiles, type SearchOptions } from './tools'
@@ -1151,6 +1152,28 @@ function handlers() {
     if (!empty) p.chats.push(chat)
     chat.updatedAt = Date.now()
     return activate(p, chat)
+  })
+  handle('claudeSessions', () => {
+    const p = need()
+    const own = claudeFolderFor(p.root)
+    const taken = new Set(p.chats.map((c) => c.importedFrom))
+    return listClaudeSessions().map((s) => ({ ...s, inThisProject: s.folder === own, imported: taken.has(s.id) }))
+  })
+  handle('importClaudeSessions', async (ids: string[]) => {
+    const p = need()
+    notBusy()
+    let last: Chat | null = null
+    for (const id of ids) {
+      const already = p.chats.find((c) => c.importedFrom === id)
+      if (already) {
+        last = already
+        continue
+      }
+      const read = await readClaudeSession(claudeSessionFile(id))
+      last = { ...newChatObject(), ...read, importedFrom: id }
+      p.chats.push(last)
+    }
+    return last ? activate(p, last) : projectState()
   })
   handle('switchChat', (id: string) => {
     const p = need()

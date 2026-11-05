@@ -217,6 +217,16 @@ export interface TreeEntry {
   isDir: boolean
 }
 
+export interface ClaudeSessionSummary {
+  id: string
+  title: string
+  project: string
+  updatedAt: number
+  sizeMb: number
+  inThisProject: boolean
+  imported: boolean
+}
+
 export type UiItem =
   | { kind: 'user'; id: string; text: string }
   | { kind: 'assistant'; id: string; text: string; stats?: Stats }
@@ -511,6 +521,8 @@ export interface AnvilApi {
   cancel(): Promise<void>
   answerApproval(id: string, answer: ApprovalAnswer): Promise<void>
   newChat(): Promise<ProjectState>
+  claudeSessions(): Promise<ClaudeSessionSummary[]>
+  importClaudeSessions(ids: string[]): Promise<ProjectState>
   switchChat(id: string): Promise<ProjectState>
   deleteChat(id: string): Promise<ProjectState>
   getDiff(path: string): Promise<{ original: string; modified: string; change: FileChange | null }>

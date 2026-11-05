@@ -777,6 +777,7 @@ export function App() {
               changes={changes} selectedFile={selected} items={items} chats={chats} activeChat={activeChat} checkpoints={checkpoints} busy={busy} live={live} context={context} settings={settings}
               hasProject ready={status === 'online'} activeFile={selected} files={files} onOpenFile={openFile} onError={onError}
               onNewChat={() => void api.newChat().then(showChat).catch(onError)}
+              onImportSessions={(ids) => void api.importClaudeSessions(ids).then(showChat).catch(onError)}
               onSwitchChat={(id) => void api.switchChat(id).then(showChat).catch(onError)}
               onDeleteChat={(id) => void api.deleteChat(id).then(showChat).catch(onError)}
               onSetting={update}

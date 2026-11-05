@@ -11,6 +11,8 @@ export interface Chat {
   updatedAt: number
   history: ChatMessage[]
   items: UiItem[]
+  /** The Claude Code session this came from, so importing twice doesn't duplicate it. */
+  importedFrom?: string
 }
 
 export interface SavedSession {

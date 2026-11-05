@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
-import type { AgentMode, ChatSummary, Checkpoint, Effort, FileChange, OpenAiEffort, Settings, Stats, UiItem } from '../../shared/types'
+import type { AgentMode, ChatSummary, Checkpoint, ClaudeSessionSummary, Effort, FileChange, OpenAiEffort, Settings, Stats, UiItem } from '../../shared/types'
 import { isCloud, PROVIDER_LABEL } from '../../shared/types'
+import { mdBlocks } from '../../shared/mdblocks'
 import { FileIcon, Icon, Logo } from './Icon'
 import { MOD } from './keys'
 
@@ -33,7 +34,26 @@ function Rich({ text }: { text: string }) {
             </div>
           )
         }
-        return part.trim() ? <p key={i}>{inline(part.trim())}</p> : null
+        return mdBlocks(part).map((block, j) => {
+          const key = `${i}.${j}`
+          if (block.kind === 'heading') return <div className={`md-h md-h${Math.min(block.level, 3)}`} key={key}>{inline(block.text)}</div>
+          if (block.kind === 'rule') return <hr className="md-rule" key={key} />
+          if (block.kind === 'list') {
+            const items = block.items.map((item, n) => <li key={n}>{inline(item)}</li>)
+            return block.ordered ? <ol key={key} start={block.start}>{items}</ol> : <ul key={key}>{items}</ul>
+          }
+          if (block.kind === 'table') {
+            return (
+              <div className="md-table" key={key}>
+                <table>
+                  <thead><tr>{block.head.map((cell, n) => <th key={n}>{inline(cell)}</th>)}</tr></thead>
+                  <tbody>{block.rows.map((row, r) => <tr key={r}>{row.map((cell, n) => <td key={n}>{inline(cell)}</td>)}</tr>)}</tbody>
+                </table>
+              </div>
+            )
+          }
+          return <p key={key}>{inline(block.text)}</p>
+        })
       })}
     </>
   )
@@ -98,7 +118,56 @@ const MODES: { id: AgentMode; label: string; title: string }[] = [
   { id: 'ask', label: 'Ask', title: 'Answers questions. Uses no tools.' }
 ]
 
-function ChatList({ chats, active, onPick, onDelete, onClose }: { chats: ChatSummary[]; active: string; onPick(id: string): void; onDelete(id: string): void; onClose(): void }) {
+function ImportSessions({ onImport, onClose }: { onImport(ids: string[]): void; onClose(): void }) {
+  const [sessions, setSessions] = useState<ClaudeSessionSummary[] | null>(null)
+  const [error, setError] = useState('')
+  const [everywhere, setEverywhere] = useState(false)
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    api.claudeSessions().then((list) => {
+      setSessions(list)
+      if (!list.some((s) => s.inThisProject)) setEverywhere(true)
+    }).catch((e) => setError(e instanceof Error ? e.message : String(e)))
+  }, [])
+  const shown = (sessions ?? []).filter((s) => everywhere || s.inThisProject)
+  const toggle = (id: string) => setPicked((old) => {
+    const next = new Set(old)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    return next
+  })
+  const fresh = shown.filter((s) => !s.imported)
+  return (
+    <div className="modal-wrap top" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="palette import-sessions" role="dialog" aria-label="Import sessions">
+        <div className="prompt-title">Import Claude Code sessions into this project</div>
+        <div className="import-tabs">
+          <button className={everywhere ? '' : 'on'} onClick={() => { setEverywhere(false); setPicked(new Set()) }}>This project</button>
+          <button className={everywhere ? 'on' : ''} onClick={() => { setEverywhere(true); setPicked(new Set()) }}>All projects</button>
+          <button className="link select-all" disabled={!fresh.length} onClick={() => setPicked(new Set(fresh.map((s) => s.id)))}>Select all</button>
+        </div>
+        <div className="import-list">
+          {error && <div className="pane-empty small">{error}</div>}
+          {!sessions && !error && <div className="pane-empty small">Loading…</div>}
+          {sessions && !error && !shown.length && <div className="pane-empty small">No Claude Code sessions found.</div>}
+          {shown.map((s) => (
+            <label key={s.id} className={`import-row ${s.imported ? 'done' : ''}`}>
+              <input type="checkbox" disabled={s.imported} checked={s.imported || picked.has(s.id)} onChange={() => toggle(s.id)} />
+              <span className="pop-title">{s.title}</span>
+              <small>{s.imported ? 'Imported' : `${everywhere ? `${s.project}, ` : ''}${new Date(s.updatedAt).toLocaleDateString()}`}</small>
+            </label>
+          ))}
+        </div>
+        <div className="row import-actions">
+          <button onClick={onClose}>Cancel</button>
+          <button className="primary" disabled={!picked.size} onClick={() => { onClose(); onImport([...picked]) }}>Import {picked.size || ''}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ChatList({ chats, active, onPick, onDelete, onImport, onClose }: { chats: ChatSummary[]; active: string; onPick(id: string): void; onDelete(id: string): void; onImport(): void; onClose(): void }) {
   return (
     <>
       <div className="scrim" onClick={onClose} />
@@ -109,6 +178,7 @@ function ChatList({ chats, active, onPick, onDelete, onClose }: { chats: ChatSum
             <button className="icon-btn" aria-label={`Delete chat ${c.title}`} onClick={(e) => { e.stopPropagation(); onDelete(c.id) }}><Icon name="trash" size={13} /></button>
           </div>
         ))}
+        <button className="pop-import" onClick={onImport}><Icon name="plus" size={13} />Import sessions</button>
       </div>
     </>
   )
@@ -132,6 +202,7 @@ export interface ChatProps {
   onOpenFile(path: string): void
   onError(e: unknown): void
   onNewChat(): void
+  onImportSessions(ids: string[]): void
   onSwitchChat(id: string): void
   onDeleteChat(id: string): void
   onSetting(patch: Partial<Settings>): void
@@ -187,6 +258,7 @@ export function Chat(p: ChatProps) {
   const [text, setText] = useState('')
   const [mode, setMode] = useState<AgentMode>('agent')
   const [showChats, setShowChats] = useState(false)
+  const [importing, setImporting] = useState(false)
   const [mentionAt, setMentionAt] = useState(0)
   const [cursor, setCursor] = useState(0)
   const list = useRef<HTMLDivElement>(null)
@@ -228,13 +300,14 @@ export function Chat(p: ChatProps) {
 
   return (
     <aside className="chat">
+      {importing && <ImportSessions onClose={() => setImporting(false)} onImport={p.onImportSessions} />}
       <div className="chat-head">
         <button className="ghost chat-title" onClick={() => setShowChats(!showChats)} disabled={!hasProject}>
           <Icon name="history" size={14} />
           <span>{p.chats.find((c) => c.id === p.activeChat)?.title ?? 'Chat'}</span>
         </button>
         <button className="icon-btn" aria-label="New chat" title={`New chat (${MOD}N)`} disabled={busy || !hasProject} onClick={p.onNewChat}><Icon name="plus" /></button>
-        {showChats && <ChatList chats={p.chats} active={p.activeChat} onClose={() => setShowChats(false)} onPick={(id) => { setShowChats(false); p.onSwitchChat(id) }} onDelete={p.onDeleteChat} />}
+        {showChats && <ChatList chats={p.chats} active={p.activeChat} onImport={() => { setShowChats(false); setImporting(true) }} onClose={() => setShowChats(false)} onPick={(id) => { setShowChats(false); p.onSwitchChat(id) }} onDelete={p.onDeleteChat} />}
       </div>
 
       <div className="chat-list" ref={list} onScroll={(e) => {
