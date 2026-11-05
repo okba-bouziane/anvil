@@ -161,10 +161,11 @@ function Tree({ selected, revision, changed, folders, onRemoveFolder, onOpen, on
 
 /** The symbols in the open file, below the file tree. */
 function Outline({ path, revision, onOpenAt }: { path: string | null; revision: number; onOpenAt(path: string, line: number): void }) {
-  const [open, setOpen] = useState(() => localStorage.getItem('anvil.outline') === '1')
+  // Not localStorage: reading it first blocks the whole window while Chromium opens its database, about 3.6 s in one measured launch.
+  const [open, setOpen] = useState(false)
+  useEffect(() => { void api.uiGet<boolean>('outlineOpen').then((saved) => { if (saved) setOpen(true) }) }, [])
   const [symbols, setSymbols] = useState<{ name: string; kind: string; line: number; container?: string }[]>([])
   useEffect(() => {
-    localStorage.setItem('anvil.outline', open ? '1' : '0')
     if (!open || !path || !/\.[cm]?[jt]sx?$/.test(path)) return setSymbols([])
     let stale = false
     void api.intel<{ name: string; kind: string; line: number; container?: string }[]>('symbols', path).then((list) => { if (!stale) setSymbols(list) }).catch(() => setSymbols([]))
@@ -172,7 +173,7 @@ function Outline({ path, revision, onOpenAt }: { path: string | null; revision: 
   }, [open, path, revision])
   return (
     <div className={`outline ${open ? 'open' : ''}`}>
-      <button className="link section-toggle outline-toggle" aria-expanded={open} onClick={() => setOpen(!open)}><span className={`tree-caret ${open ? 'open' : ''}`}><Icon name="chevron" size={10} /></span>Outline</button>
+      <button className="link section-toggle outline-toggle" aria-expanded={open} onClick={() => { setOpen(!open); void api.uiSet('outlineOpen', !open) }}><span className={`tree-caret ${open ? 'open' : ''}`}><Icon name="chevron" size={10} /></span>Outline</button>
       {open && (
         <div className="outline-list">
           {!symbols.length && <div className="pane-empty small">{path ? 'No symbols in this file.' : 'Open a file.'}</div>}
