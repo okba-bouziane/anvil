@@ -44,7 +44,7 @@ jobs:
         shell: bash
         run: |
           for file in dist/Pitoo-*.exe dist/Pitoo-*.AppImage dist/Pitoo-*.deb; do
-            [ -e "$file" ] && cp "$file" "${file/Pitoo-/Anvil-}"
+            if [ -e "$file" ]; then cp "$file" "${file/Pitoo-/Anvil-}"; fi
           done
       - uses: softprops/action-gh-release@v2
         with:
