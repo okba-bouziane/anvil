@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { applyEdit, readFileTool, repairArgs, runCommand, safePath, searchTool, trimOutput } from '../src/main/tools'
+import { applyEdit, globToRegExp, readFileTool, repairArgs, runCommand, safePath, searchTool, trimOutput } from '../src/main/tools'
 
 let root: string
 beforeEach(() => {
@@ -98,5 +98,19 @@ describe('searchProject', () => {
     expect(searchProject(root, 'h.llo', { ...opts, regex: true }).map((h) => h.line)).toEqual([1, 2, 3])
     expect(() => searchProject(root, '(', { ...opts, regex: true })).toThrow(SyntaxError)
     expect(searchProject(root, '', opts)).toEqual([])
+  })
+})
+
+describe('search filters', () => {
+  it('turns patterns into path tests', () => {
+    expect(globToRegExp('src/**').test('src/a/b.ts')).toBe(true)
+    expect(globToRegExp('src/**').test('lib/src/a.ts')).toBe(false)
+    expect(globToRegExp('*.ts').test('src/a/b.ts')).toBe(true)
+    expect(globToRegExp('*.ts').test('src/a/b.tsx')).toBe(false)
+    expect(globToRegExp('docs').test('docs/a.md')).toBe(true)
+    expect(globToRegExp('docs').test('src/docs/a.md')).toBe(true)
+    expect(globToRegExp('docs').test('mydocs/a.md')).toBe(false)
+    expect(globToRegExp('**/*.spec.ts').test('a/b/c.spec.ts')).toBe(true)
+    expect(globToRegExp('**/*.spec.ts').test('c.spec.ts')).toBe(true)
   })
 })

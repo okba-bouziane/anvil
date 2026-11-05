@@ -14,4 +14,7 @@ window.addEventListener('error', (e) => {
   if (harmless(e.error)) e.preventDefault()
 })
 
+// The terminal measures its font once, when it opens, so have the font ready by then.
+void document.fonts.load("12px 'JetBrains Mono'")
+
 createRoot(document.getElementById('root')!).render(<App />)

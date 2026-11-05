@@ -3,94 +3,108 @@
   const $ = (s, root = document) => root.querySelector(s)
   const $$ = (s, root = document) => [...root.querySelectorAll(s)]
 
-  /* Sparks rise from behind the app window, the one thing only a forge would have. */
-  function sparks(canvas, rate, spawnY) {
-    if (!canvas || reduce) return
+  /* The logo. It says hello when the page opens and whenever you point at it. */
+  const LOGO = `<svg viewBox="0 0 64 64" aria-hidden="true"><g class="logo-body"><path class="logo-fill" d="M3.5 19.5C12 20.5 17 17 23 14C25 13 27 12 30 12H56C59.5 12 62 14.5 62 18V26C62 29 60 31 57 31.3C52 31.8 47.5 34 46 38V41C46 44.5 49 47 53.5 48C56 48.6 57 50 57 52V54C57 56 55.6 57.4 53.6 57.4H18.4C16.4 57.4 15 56 15 54V52C15 50 16 48.6 18.5 48C23 47 26 44.5 26 41V38C25 33 13 26 3.5 22.5C1.8 21.8 1.8 19.4 3.5 19.5Z"/><g class="logo-eyes"><circle class="logo-eye" cx="35" cy="21" r="3"/><circle class="logo-eye" cx="49" cy="21" r="3"/></g><path class="logo-happy" d="M31.5 22C32.5 19 37.500 19 38.500 22M45.500 22C46.500 19 51.500 19 52.500 22"/><path class="logo-smile" d="M39.500 25.500C40.500 27.500 43.500 27.500 44.500 25.500"/></g><path class="logo-star" style="--d:0s" transform="translate(6 8)" d="M0-5C.6-1.6 1.6-.6 5 0C1.6.6.6 1.6 0 5C-.6 1.6-1.6.6-5 0C-1.6-.6-.6-1.6 0-5Z"/><path class="logo-star" style="--d:.06s" transform="translate(62 4) scale(.8)" d="M0-5C.6-1.6 1.6-.6 5 0C1.6.6.6 1.6 0 5C-.6 1.6-1.6.6-5 0C-1.6-.6-.6-1.6 0-5Z"/><path class="logo-star" style="--d:.12s" transform="translate(34 2) scale(.6)" d="M0-5C.6-1.6 1.6-.6 5 0C1.6.6.6 1.6 0 5C-.6 1.6-1.6.6-5 0C-1.6-.6-.6-1.6 0-5Z"/></svg>`
+  $$('[data-logo]').forEach((slot, i) => {
+    slot.classList.add('logo')
+    slot.innerHTML = LOGO.replaceAll('lgID', `lg${i}`)
+    const hop = () => {
+      slot.classList.remove('hop')
+      void slot.getBoundingClientRect()
+      slot.classList.add('hop')
+    }
+    slot.closest('a')?.addEventListener('pointerenter', hop)
+    if (slot.dataset.logo === 'hop' && !reduce) setTimeout(hop, 1400)
+  })
+
+  /* A slow, quiet field of dots behind the headline. It stops whenever it's off screen. */
+  ;(function field() {
+    const canvas = $('#field')
+    const hero = $('#hero')
     const ctx = canvas.getContext('2d')
-    const list = []
-    let w = 0
-    let h = 0
-    let visible = false
-    let raf = 0
-    const dpr = Math.min(devicePixelRatio || 1, 2)
-    const size = () => {
-      w = canvas.offsetWidth
-      h = canvas.offsetHeight
+    let w = 0, h = 0, dpr = 1, dots = [], raf = 0, last = 0, start = 0, visible = false
+    const pointer = { x: -999, y: -999 }
+    const smooth = (a, b, x) => {
+      const t = Math.min(1, Math.max(0, (x - a) / (b - a)))
+      return t * t * (3 - 2 * t)
+    }
+    function build() {
+      const box = canvas.getBoundingClientRect()
+      w = box.width
+      h = box.height
+      dpr = Math.min(devicePixelRatio || 1, 1.5)
       canvas.width = w * dpr
       canvas.height = h * dpr
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    }
-    const spawn = () => {
-      const fromCenter = (Math.random() - 0.5) * Math.random() * 2
-      list.push({
-        x: w / 2 + fromCenter * w * 0.46,
-        y: spawnY(h),
-        vx: (Math.random() - 0.5) * 0.8 + fromCenter * 0.7,
-        vy: -(Math.random() * 2.6 + 0.8),
-        life: 1,
-        decay: Math.random() * 0.007 + 0.003,
-        r: Math.random() * 1.5 + 0.5,
-        wobble: Math.random() * 6.28
-      })
-    }
-    const frame = () => {
-      raf = requestAnimationFrame(frame)
-      ctx.clearRect(0, 0, w, h)
-      for (let i = 0; i < rate; i++) if (Math.random() < 0.5 && list.length < 120) spawn()
-      ctx.globalCompositeOperation = 'lighter'
-      for (let i = list.length - 1; i >= 0; i--) {
-        const s = list[i]
-        s.wobble += 0.04
-        s.x += s.vx + Math.sin(s.wobble) * 0.35
-        s.y += s.vy
-        s.vy *= 0.997
-        s.life -= s.decay
-        if (s.life <= 0 || s.y < -10) {
-          list.splice(i, 1)
-          continue
+      const cell = w < 700 ? 20 : 17
+      dots = []
+      for (let y = cell / 2; y < h; y += cell) {
+        for (let x = cell / 2; x < w; x += cell) {
+          // Clear behind the text, and gone by the bottom, where the product window begins.
+          const fromCenter = Math.hypot((x - w / 2) / (w * 0.42), (y - h * 0.46) / (h * 0.42))
+          const keep = smooth(0.62, 1.15, fromCenter) * (1 - smooth(h * 0.62, h, y))
+          if (keep > 0.01) dots.push({ x, y, keep })
         }
-        const a = s.life * s.life
-        ctx.beginPath()
-        ctx.fillStyle = `rgba(190,180,255,${a})`
-        ctx.shadowColor = '#8f83ff'
-        ctx.shadowBlur = 12
-        ctx.arc(s.x, s.y, s.r, 0, 6.3)
-        ctx.fill()
-        ctx.beginPath()
-        ctx.strokeStyle = `rgba(160,150,255,${a * 0.5})`
-        ctx.lineWidth = s.r * 0.7
-        ctx.moveTo(s.x, s.y)
-        ctx.lineTo(s.x - s.vx * 3, s.y - s.vy * 3)
-        ctx.stroke()
       }
+    }
+    function paint(t) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.clearRect(0, 0, w, h)
+      ctx.fillStyle = 'rgb(190,182,168)'
+      for (const d of dots) {
+        const wave = Math.sin(d.x * 0.0062 + t * 0.26) + Math.sin(d.y * 0.0091 - t * 0.19) + Math.sin((d.x + d.y) * 0.0041 + t * 0.13)
+        const level = Math.max(0, (wave + 1.1) / 4)
+        const near = Math.max(0, 1 - Math.hypot(d.x - pointer.x, d.y - pointer.y) / 180)
+        ctx.globalAlpha = Math.min(0.7, (level * level * 0.75 + 0.03) * d.keep + near * near * 0.32)
+        const size = 1.3 + level * 1.1
+        ctx.fillRect(d.x, d.y, size, size)
+      }
+      ctx.globalAlpha = 1
+    }
+    function frame(ms) {
+      raf = requestAnimationFrame(frame)
+      if (ms - last < 40) return
+      last = ms
+      if (!start) start = ms
+      paint((ms - start) / 1000)
+    }
+    build()
+    if (reduce) return paint(0)
+    const run = () => {
+      cancelAnimationFrame(raf)
+      if (visible && !document.hidden) raf = requestAnimationFrame(frame)
     }
     new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting
-      cancelAnimationFrame(raf)
-      if (visible) {
-        size()
-        frame()
-      }
-    }).observe(canvas)
-    addEventListener('resize', () => { if (visible) size() })
-  }
-  sparks($('#sparks'), 1, (h) => Math.min(h * 0.6, 780) + Math.random() * 120)
-  sparks($('#sparks2'), 1, (h) => h)
+      run()
+    }, { threshold: 0.02 }).observe(hero)
+    document.addEventListener('visibilitychange', run)
+    let resizeTimer = 0
+    addEventListener('resize', () => {
+      clearTimeout(resizeTimer)
+      resizeTimer = setTimeout(build, 150)
+    })
+    hero.addEventListener('pointermove', (e) => {
+      const box = canvas.getBoundingClientRect()
+      pointer.x = e.clientX - box.left
+      pointer.y = e.clientY - box.top
+    }, { passive: true })
+    hero.addEventListener('pointerleave', () => { pointer.x = pointer.y = -999 })
+  })()
 
-  /* Scroll: the window flattens toward you, and the bar at the top fills. */
-  const win = $('#window')
-  const stage = $('#stage')
+  /* Scroll: the top line and the story rail fill as you read. */
   const progress = $('#progress')
+  const nav = $('.nav')
+  const rail = $('#rail')
+  const railBox = $('#story-steps')
+  const win = $('#window')
   let ticking = false
   const onScroll = () => {
     ticking = false
     const max = document.documentElement.scrollHeight - innerHeight
     progress.style.transform = `scaleX(${max > 0 ? scrollY / max : 0})`
-    if (reduce) return
-    const rect = stage.getBoundingClientRect()
-    const t = Math.min(1, Math.max(0, 1 - (rect.top - innerHeight * 0.14) / (innerHeight * 0.7)))
-    win.style.setProperty('--tilt', `${(1 - t) * 20}deg`)
-    win.style.setProperty('--zoom', String(0.94 + t * 0.06))
+    nav.classList.toggle('stuck', scrollY > 8)
+    const box = railBox.getBoundingClientRect()
+    rail.style.transform = `scaleY(${Math.min(1, Math.max(0, (innerHeight * 0.55 - box.top) / box.height))})`
   }
   addEventListener('scroll', () => {
     if (!ticking) {
@@ -98,24 +112,8 @@
       requestAnimationFrame(onScroll)
     }
   }, { passive: true })
+  addEventListener('resize', onScroll)
   onScroll()
-
-  /* Reveal sections as they arrive, one after another. */
-  const showAll = (el) => el.classList.add('in')
-  const reveals = $$('.reveal')
-  $$('.bento,.stat-grid,.oses').forEach((group) => $$('.reveal', group).forEach((el, i) => el.style.setProperty('--i', i)))
-  if (reduce || !('IntersectionObserver' in window)) reveals.forEach(showAll)
-  else {
-    const seen = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) {
-          showAll(entry.target)
-          seen.unobserve(entry.target)
-        }
-      }
-    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' })
-    reveals.forEach((el) => seen.observe(el))
-  }
 
   /* The pinned story swaps the screenshot beside each step. */
   const shots = $$('.story-frame .shot')
@@ -130,14 +128,15 @@
   $$('.story-step').forEach((s) => stepObserver.observe(s))
   $('.story-step')?.classList.add('on')
 
-  /* Cards light up where the pointer is. */
-  $$('.card').forEach((card) => {
-    card.addEventListener('pointermove', (e) => {
-      const r = card.getBoundingClientRect()
-      card.style.setProperty('--x', `${e.clientX - r.left}px`)
-      card.style.setProperty('--y', `${e.clientY - r.top}px`)
-    })
-  })
+  /* Each feature's picture rises in once, when it arrives. */
+  const arrive = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue
+      entry.target.classList.add('in')
+      arrive.unobserve(entry.target)
+    }
+  }, { threshold: 0.2 })
+  $$('.feature').forEach((f) => arrive.observe(f))
 
   /* Hero demo: a replay of a real run. */
   const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -208,6 +207,7 @@
   function finish(result) {
     clearTimeout(timer)
     writing = false
+    $('#win-logo')?.classList.remove('working')
     state = result
     draw(added, false, false)
     steps.innerHTML = stepsHtml.read + stepsHtml.edit + stepsHtml.ok + `<div class="step note">${result === 'kept' ? 'Kept. The change is in your file.' : 'Undone. The file is back as it was.'} <button type="button" id="again">Play again</button></div>`
@@ -218,6 +218,7 @@
     clearTimeout(timer)
     state = 'writing'
     writing = true
+    $('#win-logo')?.classList.add('working')
     steps.innerHTML = stepsHtml.read
     if (reduce) {
       steps.innerHTML = stepsHtml.read + stepsHtml.edit + stepsHtml.ok
@@ -232,6 +233,7 @@
     const tick = () => {
       if (line >= added.length) {
         writing = false
+        $('#win-logo')?.classList.remove('working')
         steps.innerHTML = stepsHtml.read + stepsHtml.edit + stepsHtml.ok
         draw(shown, true, false)
         status('')
@@ -270,135 +272,16 @@
   }, { threshold: 0.2 })
   heroSeen.observe(code)
 
-  /* Works-with strip */
-  const names = ['MLX', 'Ollama', 'LM Studio', 'Anthropic', 'OpenAI', 'TypeScript', 'JavaScript', 'Git', 'npm']
-  $('#marquee').innerHTML = [...names, ...names].map((n) => `<span>${n}</span>`).join('') + [...names, ...names].map((n) => `<span>${n}</span>`).join('')
-
-  /* Commit tree card */
-  const commits = [
-    { lanes: [[0, 0]], dot: 0, msg: 'Merge the checkout flow', ref: 'main', who: 'Amina' },
-    { lanes: [[0, 0], [0, 1]], dot: 0, msg: 'Round tax to cents', who: 'Yacine' },
-    { lanes: [[0, 0], [1, 1]], dot: 1, msg: 'Add discount codes', ref: 'checkout', who: 'Amina' },
-    { lanes: [[0, 0], [1, 1]], dot: 0, msg: 'Fix the invoice total', who: 'Sara' },
-    { lanes: [[0, 0], [1, 0]], dot: 1, msg: 'Start the checkout flow', who: 'Amina' },
-    { lanes: [[0, 0]], dot: 0, msg: 'Add invoices', who: 'Yacine' }
-  ]
-  const palette = ['#7c7ff5', '#34d399']
-  const x = (l) => 8 + l * 16
-  $('#graph').innerHTML = commits.map((c, i) => `
-    <div class="graph-row" style="--r:${i}">
-      <svg width="42" height="32">
-        ${c.lanes.map(([a, b]) => `<path style="--r:${i}" d="M${x(a)} 0 V8 C${x(a)} 20 ${x(b)} 14 ${x(b)} 32" fill="none" stroke="${palette[Math.max(a, b)]}" stroke-width="1.6"/>`).join('')}
-        <circle cx="${x(c.dot)}" cy="16" r="4.2" fill="${palette[c.dot]}" stroke="#101016" stroke-width="2"/>
-      </svg>
-      ${c.ref ? `<span class="ref">${c.ref}</span>` : ''}
-      <span class="msg">${c.msg}</span>
-      <span class="who">${c.who}</span>
-    </div>`).join('')
-
-  /* Terminal card */
-  const typing = $('#typing')
-  const script = [
-    ['p', '$ '], ['t', 'npm test\n'], ['o', 'Tests  17 passed (17)\n'],
-    ['p', '$ '], ['t', 'git status\n'], ['o', 'On branch checkout\nnothing to commit\n'],
-    ['p', '$ '], ['t', 'npm run build\n'], ['k', 'Build finished\n']
-  ]
-  function typeTerminal() {
-    if (reduce) {
-      typing.innerHTML = script.map(([k, s]) => `<span class="${k === 'p' ? 'p' : k === 'k' ? 'ok' : ''}">${s}</span>`).join('')
-      return
-    }
-    typing.innerHTML = ''
-    let part = 0
-    let pos = 0
-    let current = null
-    const next = () => {
-      if (part >= script.length) {
-        setTimeout(typeTerminal, 3200)
-        return
-      }
-      const [kind, text] = script[part]
-      if (pos === 0) {
-        current = document.createElement('span')
-        if (kind === 'p') current.className = 'p'
-        if (kind === 'k') current.className = 'ok'
-        typing.appendChild(current)
-      }
-      if (kind === 't') {
-        current.textContent += text[pos++]
-        if (pos >= text.length) { part++; pos = 0; setTimeout(next, 260) } else setTimeout(next, 42 + Math.random() * 46)
-      } else {
-        current.textContent = text
-        part++
-        pos = 0
-        setTimeout(next, kind === 'p' ? 130 : 200)
-      }
-    }
-    next()
-  }
-  new IntersectionObserver(([e], o) => {
-    if (e.isIntersecting) {
-      o.disconnect()
-      typeTerminal()
-    }
-  }, { threshold: 0.2 }).observe(typing)
-
-  /* Effort card */
-  const bars = $$('#bars i')
-  const picks = $$('.effort-picks button')
-  const setEffort = (n) => {
-    bars.forEach((b, i) => b.classList.toggle('lit', i < n))
-    picks.forEach((p) => p.classList.toggle('on', Number(p.dataset.e) === n))
-  }
-  picks.forEach((p) => { p.onclick = () => setEffort(Number(p.dataset.e)) })
-  setEffort(3)
-
-  /* Ways switch */
-  const tabs = $$('.way-switch button')
-  const panels = $$('.way-panel')
-  const pill = $('#way-pill')
-  const movePill = () => {
-    const on = tabs.find((t) => t.getAttribute('aria-selected') === 'true')
-    pill.style.width = `${on.offsetWidth}px`
-    pill.style.transform = `translateX(${on.offsetLeft}px)`
-  }
-  tabs.forEach((tab, i) => {
-    tab.onclick = () => {
-      tabs.forEach((t) => t.setAttribute('aria-selected', String(t === tab)))
-      panels.forEach((p, j) => p.classList.toggle('on', j === i))
-      movePill()
-    }
-  })
-  movePill()
-  addEventListener('resize', movePill)
-  document.fonts?.ready.then(movePill)
-
-  /* Numbers count up once. */
-  const countUp = new IntersectionObserver((entries) => {
-    for (const entry of entries) {
-      if (!entry.isIntersecting) continue
-      countUp.unobserve(entry.target)
-      if (reduce) continue
-      const end = Number(entry.target.dataset.count)
-      const start = performance.now()
-      const step = (now) => {
-        const t = Math.min(1, (now - start) / 1300)
-        entry.target.textContent = String(Math.round(end * (1 - Math.pow(1 - t, 3))))
-        if (t < 1) requestAnimationFrame(step)
-      }
-      requestAnimationFrame(step)
-    }
-  }, { threshold: 0.4 })
-  $$('[data-count]').forEach((el) => countUp.observe(el))
-
-  /* Point the main button at the right download. */
+  /* Put the visitor's own system first, and point the main button at it. */
   const ua = navigator.userAgent
   const os = /Windows/.test(ua) ? 'windows' : /Linux|X11/.test(ua) && !/Android/.test(ua) ? 'linux' : /Macintosh/.test(ua) ? 'mac' : null
   if (os) {
-    const card = $(`.os[data-os="${os}"]`)
-    card.classList.add('yours')
+    const row = $(`.os[data-os="${os}"]`)
+    row.classList.add('yours')
+    const link = $('.btn', row)
+    link.classList.add('primary')
     const hero = $('#hero-download')
-    hero.lastChild.textContent = `Download for ${{ mac: 'Mac', windows: 'Windows', linux: 'Linux' }[os]}`
-    if (os !== 'mac') hero.href = $('.btn', card).href
+    hero.textContent = `Download for ${{ mac: 'Mac', windows: 'Windows', linux: 'Linux' }[os]}`
+    if (os !== 'mac') hero.href = link.href
   }
 })()

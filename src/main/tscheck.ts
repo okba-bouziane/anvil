@@ -54,7 +54,8 @@ function checkProject(ts: typeof TS, root: string, tsconfig: string, touched: st
     },
     getCurrentDirectory: () => dir,
     getCompilationSettings: () => ({ ...parsed.options, noEmit: true }),
-    getDefaultLibFileName: (o) => ts.getDefaultLibFilePath(o),
+    // In a packaged app these files sit beside the archive, not inside it.
+      getDefaultLibFileName: (o) => ts.getDefaultLibFilePath(o).replace(/app\.asar([\\/])/, 'app.asar.unpacked$1'),
     fileExists: ts.sys.fileExists,
     readFile: read,
     readDirectory: ts.sys.readDirectory,

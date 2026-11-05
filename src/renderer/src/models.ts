@@ -1,4 +1,4 @@
-import type { IntelDiagnostic } from '../../shared/types'
+import type { IntelDiagnostic, LintMessage } from '../../shared/types'
 import { monaco } from './monaco'
 
 const api = window.anvil
@@ -18,6 +18,21 @@ const problems = new Map<string, IntelDiagnostic[]>()
 const listeners = new Set<() => void>()
 let version = 0
 let autoSave = true
+const LINTABLE = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|vue|html)$/
+const lints = new Map<string, IntelDiagnostic[]>()
+const lintFixes = new Map<string, LintMessage[]>()
+let toolingOn = false
+export type LspKind = 'python' | 'angular'
+let angularProject = false
+const lspProblems = new Map<string, IntelDiagnostic[]>()
+
+/** Which language server, if any, follows this file. TypeScript only goes to Angular, for its templates. */
+export function lspKindOf(path: string): LspKind | null {
+  if (/\.pyi?$/.test(path)) return 'python'
+  if (angularProject && /\.(html|ts)$/.test(path)) return 'angular'
+  return null
+}
+const languageIdOf = (path: string) => (/\.pyi?$/.test(path) ? 'python' : path.endsWith('.ts') ? 'typescript' : 'html')
 let onError: (e: unknown) => void = () => {}
 
 const notify = () => {
@@ -43,6 +58,26 @@ function setMarkers(path: string, model: monaco.editor.ITextModel, list: IntelDi
   notify()
 }
 
+async function syncLint(path: string, entry: Entry): Promise<void> {
+  if (!toolingOn || !LINTABLE.test(path)) return
+  const text = entry.model.getValue()
+  const list = await api.tooling<LintMessage[] | null>('lint', path, text)
+  if (!list || entries.get(path) !== entry || entry.model.getValue() !== text) return
+  lintFixes.set(path, list)
+  lints.set(path, list.map((m) => ({ path, line: m.line, column: m.column, endLine: m.endLine, endColumn: m.endColumn, message: m.message, code: m.rule ? `eslint: ${m.rule}` : 'eslint', severity: m.severity })))
+  monaco.editor.setModelMarkers(entry.model, 'eslint', list.map((m) => ({
+    startLineNumber: m.line,
+    startColumn: m.column,
+    endLineNumber: m.endLine,
+    endColumn: m.endColumn,
+    message: m.message,
+    source: 'ESLint',
+    code: m.rule ?? undefined,
+    severity: m.severity === 'error' ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning
+  })))
+  notify()
+}
+
 async function syncIntel(path: string, entry: Entry): Promise<void> {
   if (!CODE.test(path)) return
   const text = entry.model.getValue()
@@ -51,7 +86,19 @@ async function syncIntel(path: string, entry: Entry): Promise<void> {
   if (entries.get(path) === entry && entry.model.getValue() === text) setMarkers(path, entry.model, list)
 }
 
+let activePath: string | null = null
+
 export const store = {
+  activePath: () => activePath,
+  formatActive() {
+    return store.runAction('editor.action.formatDocument')
+  },
+  runAction(id: string) {
+    const editor = monaco.editor.getEditors().find((e) => e.hasTextFocus() || e.getModel() === entries.get(activePath ?? '')?.model)
+    editor?.focus()
+    return editor?.getAction(id)?.run()
+  },
+  setActivePath(path: string | null) { activePath = path },
   subscribe(listener: () => void) {
     listeners.add(listener)
     return () => listeners.delete(listener)
@@ -66,7 +113,34 @@ export const store = {
     return !!e && isDirty(e)
   },
   anyDirty: () => [...entries.values()].some(isDirty),
-  problems: () => [...problems.values()].flat(),
+  problems: () => [...problems.values(), ...lints.values(), ...lspProblems.values()].flat(),
+  setAngular(on: boolean) {
+    angularProject = on
+    if (on) for (const [path, entry] of entries) { const kind = lspKindOf(path); if (kind) void api.lspOpen(kind, path, languageIdOf(path), entry.model.getValue()).catch(() => {}) }
+  },
+  setLspDiagnostics(path: string, list: { range: { start: { line: number; character: number }; end: { line: number; character: number } }; message: string; severity?: number; code?: string | number; source?: string }[]) {
+    const items = list.filter((d) => (d.severity ?? 1) <= 2)
+    lspProblems.set(path, items.map((d) => ({ path, line: d.range.start.line + 1, column: d.range.start.character + 1, endLine: d.range.end.line + 1, endColumn: d.range.end.character + 1, message: d.message, code: d.code ?? d.source ?? '', severity: d.severity === 2 ? 'warning' as const : 'error' as const })))
+    const entry = entries.get(path)
+    if (entry) {
+      monaco.editor.setModelMarkers(entry.model, 'lsp', list.map((d) => ({
+        startLineNumber: d.range.start.line + 1,
+        startColumn: d.range.start.character + 1,
+        endLineNumber: d.range.end.line + 1,
+        endColumn: d.range.end.character + 1,
+        message: d.message,
+        source: d.source,
+        code: d.code === undefined ? undefined : String(d.code),
+        severity: d.severity === 2 ? monaco.MarkerSeverity.Warning : d.severity === 3 ? monaco.MarkerSeverity.Info : d.severity === 4 ? monaco.MarkerSeverity.Hint : monaco.MarkerSeverity.Error
+      })))
+    }
+    notify()
+  },
+  lintFixes: (path: string) => lintFixes.get(path) ?? [],
+  setTooling(on: boolean) {
+    toolingOn = on
+    if (on) for (const [path, entry] of entries) void syncLint(path, entry).catch(() => {})
+  },
   setProjectProblems(list: IntelDiagnostic[]) {
     const open = new Set(entries.keys())
     for (const key of [...problems.keys()]) if (!open.has(key)) problems.delete(key)
@@ -88,12 +162,17 @@ export const store = {
     entries.set(path, entry)
     model.onDidChangeContent(() => {
       notify()
+      const kind = lspKindOf(path)
+      if (kind) void api.lspChange(kind, path, model.getValue()).catch(() => {})
       if (entry.intelTimer) clearTimeout(entry.intelTimer)
-      entry.intelTimer = setTimeout(() => void syncIntel(path, entry).catch(() => {}), 350)
+      entry.intelTimer = setTimeout(() => { void syncIntel(path, entry).catch(() => {}); void syncLint(path, entry).catch(() => {}) }, 350)
       if (entry.timer) clearTimeout(entry.timer)
       if (autoSave) entry.timer = setTimeout(() => void store.save(path).catch(onError), 900)
     })
     void syncIntel(path, entry).catch(() => {})
+    void syncLint(path, entry).catch(() => {})
+    const lspKind = lspKindOf(path)
+    if (lspKind) void api.lspOpen(lspKind, path, languageIdOf(path), text).catch(() => {})
     return model
   },
   view: (path: string) => entries.get(path)?.view ?? null,
@@ -111,6 +190,19 @@ export const store = {
     await api.writeFile(path, text)
     e.saved = text
     notify()
+  },
+  async saveAs(path: string, target: string) {
+    const e = entries.get(path)
+    if (!e) return
+    await api.createPath(target, false).catch(() => {})
+    await api.writeFile(target, e.model.getValue())
+  },
+  async revert(path: string) {
+    const e = entries.get(path)
+    if (!e) return
+    const text = await api.readFile(path)
+    e.saved = text
+    e.model.setValue(text)
   },
   async saveAll() {
     await Promise.all([...entries.keys()].map((p) => store.save(p)))
@@ -140,6 +232,11 @@ export const store = {
     e.model.dispose()
     entries.delete(path)
     problems.delete(path)
+    lints.delete(path)
+    lintFixes.delete(path)
+    lspProblems.delete(path)
+    const kind = lspKindOf(path)
+    if (kind) void api.lspClose(kind, path).catch(() => {})
     void api.intel('close', path).catch(() => {})
     notify()
   },

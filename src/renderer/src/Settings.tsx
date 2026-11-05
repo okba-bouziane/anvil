@@ -45,6 +45,31 @@ function LocalSetupCard({ setup, hasProject, onRun }: { setup: LocalSetup; hasPr
   )
 }
 
+function UpdateRow() {
+  const [version, setVersion] = useState('')
+  const [note, setNote] = useState('')
+  const [checking, setChecking] = useState(false)
+  useEffect(() => { void api.appVersion().then(setVersion) }, [])
+  const check = async () => {
+    setChecking(true)
+    setNote('')
+    try {
+      const { latest } = await api.checkUpdate()
+      setNote(latest ? `${latest.replace(/^v/, '')} is available. Use the Update button at the top.` : 'You have the latest version.')
+    } catch (e) {
+      setNote((e as Error).message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''))
+    } finally {
+      setChecking(false)
+    }
+  }
+  return (
+    <div className="setting-row">
+      <span>Anvil {version}{note && <small>{note}</small>}</span>
+      <button disabled={checking} onClick={() => void check()}>{checking ? 'Checking…' : 'Check now'}</button>
+    </div>
+  )
+}
+
 function EditorPanel({ settings, assets, onSettings, onImported, onError }: { settings: Settings; assets: ImportedAssets; onSettings(patch: Partial<Settings>): void; onImported(): void; onError(e: unknown): void }) {
   const [result, setResult] = useState<VscodeImport | null>(null)
   const [busy, setBusy] = useState(false)
@@ -76,15 +101,21 @@ function EditorPanel({ settings, assets, onSettings, onImported, onError }: { se
             </select>
           </div>
         )}
-        <div className="setting-row"><span>Font size</span><input id="font-size" type="number" min={9} max={28} value={e.fontSize} onChange={(ev) => set({ fontSize: Number(ev.target.value) || 12.5 })} /></div>
+        <div className="setting-row"><span>Font size</span><input id="font-size" type="number" min={9} max={28} value={e.fontSize} onChange={(ev) => set({ fontSize: Number(ev.target.value) || 13 })} /></div>
         <div className="setting-row"><span>Tab size</span><input id="tab-size" type="number" min={1} max={8} value={e.tabSize} onChange={(ev) => set({ tabSize: Number(ev.target.value) || 2 })} /></div>
         {toggle('Auto-save', 'Saves about a second after you stop typing', e.autoSave, (v) => set({ autoSave: v }))}
-        {toggle('Format on save', 'TypeScript and JavaScript files', e.formatOnSave, (v) => set({ formatOnSave: v }))}
+        {toggle('Format on save', 'With the project\'s Prettier if it has one, otherwise TypeScript\'s formatter', e.formatOnSave, (v) => set({ formatOnSave: v }))}
         {toggle('Word wrap', 'Wraps long lines', e.wordWrap, (v) => set({ wordWrap: v }))}
         {toggle('Show who changed each line', 'Git author, date and message at the end of the current line', e.blame, (v) => set({ blame: v }))}
+        <div className="setting-row"><span>Cursor</span><select id="cursor-style" value={settings.cursorStyle ?? 'line'} onChange={(ev) => onSettings({ cursorStyle: ev.target.value as Settings['cursorStyle'] })}><option value="line">Line</option><option value="block">Block</option><option value="underline">Underline</option></select></div>
+        {toggle('Leave the graphics chip to the local model', 'Makes a local model faster, but scrolling less smooth. Applies after you restart Anvil', !!settings.leaveGpuToModel, (v) => onSettings({ leaveGpuToModel: v }))}
+        {toggle('Sticky scroll', 'Keeps the function you are in at the top while you scroll', settings.stickyScroll !== false, (v) => onSettings({ stickyScroll: v }))}
+        {toggle('Fix ESLint problems on save', 'Uses the project\'s own ESLint rules', !!settings.fixOnSave, (v) => onSettings({ fixOnSave: v }))}
+        {toggle('File icons', 'Colored icons for files and folders, from Material Icon Theme', settings.fileIcons !== false, (v) => onSettings({ fileIcons: v }))}
         {toggle('Minimap', 'A small overview beside the code', e.minimap, (v) => set({ minimap: v }))}
         {toggle('Suggestions from the model', 'Grey text as you pause, Tab to accept. Local and custom local servers only', settings.inlineSuggest, (v) => onSettings({ inlineSuggest: v }))}
         {toggle('Check for updates', 'Asks GitHub for the latest version number', settings.checkUpdates, (v) => onSettings({ checkUpdates: v }))}
+        <UpdateRow />
       </div>
       <div className="field"><span>Import from VS Code</span>
         <p className="blurb">Copies your settings, snippets and color themes. Extensions that are programs, like ESLint or GitLens, can't run in Anvil, and the list below will name them.</p>
@@ -249,7 +280,7 @@ export function SettingsModal({ settings, initial, assets, onImported, onSetting
             {tab === 'anthropic' && (
               <label className="field"><span>Effort</span>
                 <select id="effort" value={settings.effort} onChange={(e) => onSettings({ effort: e.target.value as Effort })}>
-                  {(['low', 'medium', 'high', 'xhigh', 'max'] as Effort[]).map((v) => <option key={v} value={v}>{v}</option>)}
+                  {(['low', 'medium', 'high', 'xhigh', 'max'] as Effort[]).map((v) => <option key={v} value={v}>{v === 'xhigh' ? 'Extra high' : v[0].toUpperCase() + v.slice(1)}</option>)}
                 </select>
               </label>
             )}

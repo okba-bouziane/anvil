@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documentation | Anvil</title>
+<meta name="description" content="How to install and use Anvil: the editor, Git, workspaces, debugging, extensions, and the optional AI agent.">
+<meta name="theme-color" content="#131211">
+<link rel="icon" href="/img/icon.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="doc-page">
+<header class="nav stuck-always">
+  <a class="brand" href="/" aria-label="Anvil home"><span class="mark" data-logo></span><span class="word">Anvil</span></a>
+  <nav aria-label="Main"><a href="/#features">Features</a><a href="/docs" aria-current="page">Docs</a><a href="/faq">FAQ</a><a href="https://github.com/okba-bouziane/anvil">GitHub</a></nav>
+  <a class="btn primary small" href="/#download">Download</a>
+</header>
+<div class="doc-layout">
+<aside class="doc-side" aria-label="On this page">
+  <a href="#install">Install</a><a href="#start">First steps</a><a href="#editor">The editor</a><a href="#workspaces">Windows and workspaces</a><a href="#search">Search</a><a href="#terminal">Terminal and tasks</a><a href="#git">Git</a><a href="#code-help">Code help</a><a href="#lint">ESLint and Prettier</a><a href="#debug">Debugging</a><a href="#extensions">Extensions</a><a href="#vscode">Coming from VS Code</a><a href="#ai">AI models</a><a href="#agent">The agent</a><a href="#review">Reviewing changes</a><a href="#shortcuts">Keyboard shortcuts</a><a href="#privacy">Privacy and security</a><a href="#trouble">Troubleshooting</a>
+</aside>
+<main class="doc-main">
+<h1>Documentation</h1>
+<p class="doc-lead">Anvil is a free, open source code editor. It works with no account, no AI and no internet. Everything here applies to Mac, Windows and Linux unless it says otherwise.</p>
+
+<section id="install"><h2>Install</h2>
+<h3>Mac</h3>
+<ol><li>Download the Mac file from the <a href="/#download">download section</a>. It's for Apple Silicon.</li><li>Unzip it and move Anvil to Applications.</li><li>The app isn't notarized by Apple yet, so run this once in Terminal:</li></ol>
+<pre><code>xattr -cr /Applications/Anvil.app</code></pre>
+<h3>Windows</h3>
+<p>Run the installer. It isn't signed yet, so SmartScreen may warn you. Choose More info, then Run anyway.</p>
+<h3>Linux</h3>
+<p>Use the AppImage, which needs no install, or the deb package:</p>
+<pre><code>chmod +x Anvil-linux-x86_64.AppImage
+sudo apt install ./Anvil-linux-amd64.deb</code></pre>
+<h3>Updates</h3>
+<p>When a new version is out, an Update button appears at the top of the window. It downloads the new version, then offers to restart. You can turn the check off in Settings, under Editor.</p>
+</section>
+
+<section id="start"><h2>First steps</h2>
+<ol><li>Open a project, clone a repository, or open a workspace from the start screen.</li><li>Press <kbd>⌘P</kbd> to open a file. On Windows and Linux, use <kbd>Ctrl</kbd> wherever this page shows <kbd>⌘</kbd>.</li><li>Press <kbd>⇧⌘P</kbd> to see every command in one list.</li><li>If you don't want AI, press <kbd>⌘L</kbd> to hide the agent. Nothing else depends on it.</li></ol>
+<p>Your open tabs come back the next time you open a project.</p>
+</section>
+
+<section id="editor"><h2>The editor</h2>
+<p>Anvil uses Monaco, the same editing engine as VS Code, so multiple cursors, find and replace, code folding and most editing shortcuts work the same way.</p>
+<ul><li><b>Side by side:</b> press <kbd>⌘\</kbd> or right-click a tab and choose Open to the side. Drag the divider to resize, and double-click it to reset.</li><li><b>Tabs:</b> drag to reorder, middle-click to close, right-click to close others. <kbd>⇧⌘T</kbd> reopens the last one.</li><li><b>Panels:</b> drag any panel edge to resize it, and double-click to go back to the default size. <kbd>⌘B</kbd> hides the side panel.</li><li><b>Zen mode:</b> shows only the code. Choose it from the View menu, and press Escape to leave.</li><li><b>Previews:</b> images open as pictures, and Markdown files have a Preview button.</li><li><b>Saving:</b> auto-save is on by default. Turn it off in Settings, under Editor.</li><li><b>Margin marks:</b> show lines that differ from your last commit.</li></ul>
+<p>Font size, cursor style, tab size, word wrap, minimap, sticky scroll and file icons are all in Settings (<kbd>⌘,</kbd>).</p>
+</section>
+
+<section id="workspaces"><h2>Windows and workspaces</h2>
+<p><b>New window:</b> press <kbd>⇧⌘N</kbd> to open another project in its own window.</p>
+<p><b>Workspace:</b> several folders open together, such as a frontend and a backend in separate repositories. Choose File, then Add Folder to Workspace. Save it with File, then Save Workspace As. Anvil reads and writes the same <code>.code-workspace</code> files as VS Code.</p>
+<p>Only the folders you add can be seen or changed, including by the agent. If they hold separate repositories, a menu at the top of the Git panel switches between them.</p>
+<p><b>Terminal command:</b> on Mac and Linux, run Install the anvil terminal command from the command palette. Then <code>anvil .</code> opens any folder.</p>
+</section>
+
+<section id="search"><h2>Search</h2>
+<p>Press <kbd>⇧⌘F</kbd> to search the project. You can match case, match whole words or use a regular expression. Choose Filter by files to limit it, for example to <code>src/**</code> or to leave out <code>*.spec.ts</code>.</p>
+<p>Replace all shows every replacement in the changes list above the chat, so you can review and undo them.</p>
+</section>
+
+<section id="terminal"><h2>Terminal and tasks</h2>
+<p>Press <kbd>⌘J</kbd> for the terminal. It has tabs and can split in two. File paths and addresses in the output can be clicked, such as <code>src/app.ts:12</code> in an error.</p>
+<p>The Scripts tab runs npm scripts with one click. Run Task, in the Terminal menu, also lists tasks from <code>.vscode/tasks.json</code>.</p>
+</section>
+
+<section id="git"><h2>Git</h2>
+<p>Open the Git tab in the side panel. Git must be installed on your computer.</p>
+<ul><li><b>Commit:</b> stage files or stage a single block from the compare view, then commit. Turn on Amend to change the last commit.</li><li><b>Sync:</b> Fetch, Pull and Push. The ⋯ menu has pull with rebase and safe force push. Pushing a new branch sets its upstream for you.</li><li><b>Branches:</b> click the branch name to switch, create, rename, delete, merge or rebase. Remote branches are listed too.</li><li><b>Stash:</b> set work aside and bring it back later, including new files.</li><li><b>Commit history:</b> every branch as a graph. Click a commit to see its files, or right-click to branch, tag, cherry-pick, revert or reset.</li><li><b>Who changed this line:</b> shown at the end of the line you're on, and File history is above the editor.</li></ul>
+<h3>Resolving a conflict</h3>
+<ol><li>When a merge or rebase stops, the panel shows Merging or Rebasing, with the files to fix.</li><li>Open a file. Each conflict has Keep current, Keep incoming and Keep both, and you can also edit by hand.</li><li>Save, then press the check mark beside the file to mark it resolved.</li><li>Press Continue, or Abort to go back to how things were.</li></ol>
+<h3>Pull requests</h3>
+<p>These use GitHub's <a href="https://cli.github.com">gh</a> tool. Install it and run <code>gh auth login</code> once. Anvil then lists, checks out and creates pull requests, and never sees your GitHub password or token.</p>
+</section>
+
+<section id="code-help"><h2>Code help</h2>
+<table><thead><tr><th>Language</th><th>What you get</th></tr></thead><tbody>
+<tr><td>TypeScript, JavaScript</td><td>Errors as you type, completion with automatic imports, hover, go to definition, references, rename, a project-wide Problems list, and outline</td></tr>
+<tr><td>Angular templates</td><td>Errors, completion, hover and go to definition in templates, using the Angular language server included with Anvil</td></tr>
+<tr><td>Python</td><td>Errors, completion, hover, go to definition, references and rename, using Pyright included with Anvil. Works offline</td></tr>
+<tr><td>HTML, CSS, JSON</td><td>Some completion, Emmet, and HTML tags that close themselves</td></tr>
+<tr><td>Others</td><td>Syntax colors</td></tr>
+</tbody></table>
+</section>
+
+<section id="lint"><h2>ESLint and Prettier</h2>
+<p>If your project uses them, Anvil asks once whether to allow them. It runs your project's own installed versions with your own config, the way VS Code does, and that means running code from the project. Only allow it for projects you trust.</p>
+<p>Once allowed, ESLint problems appear as you type, with quick fixes. Prettier handles Format and format on save. Fix ESLint problems on save is in Settings. In a monorepo, each package uses its own config.</p>
+</section>
+
+<section id="debug"><h2>Debugging</h2>
+<p>Click beside a line number, or press <kbd>F9</kbd>, to add a breakpoint. Then open the Debug tab, choose what to run, and press Start.</p>
+<ul><li><b>This file:</b> runs the open JavaScript, TypeScript or Python file.</li><li><b>npm run:</b> debugs any npm script, including child processes. TypeScript breakpoints work through source maps.</li><li><b>Open in Chrome:</b> debugs a web app at an address you give.</li><li><b>Attach:</b> connects to a Node process already running with <code>--inspect</code>.</li><li><b>launch.json:</b> setups from <code>.vscode/launch.json</code> appear in the same list.</li></ul>
+<p>While paused you have the call stack, variables, watch expressions and a console. <kbd>F5</kbd> continues, <kbd>F10</kbd> steps over, <kbd>F11</kbd> steps in and <kbd>⇧F11</kbd> steps out. To stop only in some cases, add a condition to a breakpoint from the list.</p>
+<p>Python debugging needs debugpy in your Python:</p>
+<pre><code>python3 -m pip install debugpy</code></pre>
+</section>
+
+<section id="extensions"><h2>Extensions</h2>
+<p>Press <kbd>⇧⌘X</kbd> to browse <a href="https://open-vsx.org">Open VSX</a>, the open extension registry. Each extension is labeled:</p>
+<ul><li><b>Works in Anvil:</b> color themes and snippets. These install and work.</li><li><b>Partly works:</b> its themes or snippets work, and the rest of it doesn't.</li><li><b>Can't run yet:</b> a program, such as a language pack or GitLens.</li></ul>
+<p>Program extensions don't run because they depend on VS Code's internal engine, which Anvil doesn't have. Anvil keeps only an extension's data files and never runs its code.</p>
+</section>
+
+<section id="vscode"><h2>Coming from VS Code</h2>
+<ul><li><b>Import:</b> Settings, then Editor, then Import from VS Code copies your settings, snippets and color themes.</li><li><b>Project files:</b> Anvil follows editor settings in <code>.vscode/settings.json</code>, and reads <code>tasks.json</code>, <code>launch.json</code> and <code>.code-workspace</code> files.</li><li><b>Shortcuts:</b> the main ones match. See the list below, or Keyboard Shortcuts in the File menu. They can't be changed yet.</li></ul>
+</section>
+
+<section id="ai"><h2>AI models</h2>
+<p>AI is optional. Open Settings, choose a provider, and press Use.</p>
+<table><thead><tr><th>Provider</th><th>Setup</th><th>Your code</th></tr></thead><tbody>
+<tr><td>Local (MLX)</td><td>Mac with Apple Silicon. The Settings page guides the setup. About 6 GB of disk and 16 GB of memory</td><td>Stays on your computer</td></tr>
+<tr><td>Ollama, LM Studio</td><td>Any system. Choose Custom server and its preset</td><td>Stays on your computer</td></tr>
+<tr><td>Anthropic, OpenAI</td><td>Paste your own API key. It's encrypted in your system's secure storage. Choose the effort level in the chat box</td><td>Sent to that provider</td></tr>
+<tr><td>Custom server</td><td>Any server with an OpenAI-style API</td><td>Sent to that server</td></tr>
+</tbody></table>
+<p>The chat box always shows where your code goes. If you run a local model and want its full speed, turn on Leave the graphics chip to the local model in Settings. Scrolling is then less smooth.</p>
+</section>
+
+<section id="agent"><h2>The agent</h2>
+<ul><li><b>Agent:</b> reads, edits and runs commands.</li><li><b>Plan:</b> can only read, and proposes what to do.</li><li><b>Ask:</b> answers questions, with no tools.</li></ul>
+<p>Type <code>@</code> to attach a file. Put your project's rules in <code>ANVIL.md</code> or <code>AGENTS.md</code> and the agent follows them. Each project keeps its own chats, which survive a restart.</p>
+<p>Commands ask before they run. Once approved, a command has your full user permissions and can't be undone from Anvil, so leave Auto-run commands off unless you trust the project.</p>
+</section>
+
+<section id="review"><h2>Reviewing changes</h2>
+<p>Everything the agent changes goes in the list above the chat box.</p>
+<ul><li><b>Closed:</b> shows the totals, with Keep all and Undo all.</li><li><b>Open:</b> each file has its own Keep and Undo.</li><li><b>Click a file:</b> shows its changes, with Keep and Undo on each block.</li><li><b>Undo this step:</b> in the chat, restores every file from a step, even changes you already kept.</li></ul>
+<p>Edits are already on disk while you review, so you can run or test them first. Undo puts the file back.</p>
+</section>
+
+<section id="shortcuts"><h2>Keyboard shortcuts</h2>
+<table class="keys-table"><tbody>
+<tr><td>All commands</td><td><kbd>⇧⌘P</kbd></td></tr><tr><td>Go to file</td><td><kbd>⌘P</kbd></td></tr><tr><td>Go to symbol</td><td><kbd>⇧⌘O</kbd></td></tr><tr><td>Search in project</td><td><kbd>⇧⌘F</kbd></td></tr><tr><td>Side panel</td><td><kbd>⌘B</kbd></td></tr><tr><td>Terminal</td><td><kbd>⌘J</kbd></td></tr><tr><td>Agent</td><td><kbd>⌘L</kbd></td></tr><tr><td>Extensions</td><td><kbd>⇧⌘X</kbd></td></tr><tr><td>Side by side</td><td><kbd>⌘\</kbd></td></tr><tr><td>Close tab</td><td><kbd>⌘W</kbd></td></tr><tr><td>Reopen tab</td><td><kbd>⇧⌘T</kbd></td></tr><tr><td>New window</td><td><kbd>⇧⌘N</kbd></td></tr><tr><td>Save as</td><td><kbd>⇧⌘S</kbd></td></tr><tr><td>Settings</td><td><kbd>⌘,</kbd></td></tr><tr><td>Breakpoint</td><td><kbd>F9</kbd></td></tr><tr><td>Continue, step over, step in</td><td><kbd>F5</kbd> <kbd>F10</kbd> <kbd>F11</kbd></td></tr><tr><td>Go to definition</td><td><kbd>F12</kbd></td></tr><tr><td>Rename</td><td><kbd>F2</kbd></td></tr>
+</tbody></table>
+</section>
+
+<section id="privacy"><h2>Privacy and security</h2>
+<ul><li>No account and no telemetry.</li><li>With no AI or a local model, your code stays on your computer.</li><li>With a cloud provider, the code the agent reads and your messages go to that provider.</li><li>Network use you can turn off or avoid: the update check, the extension store, and Git commands you run.</li><li>API keys are encrypted with your system's secure storage. On Linux without a keyring, Anvil refuses to save them.</li></ul>
+</section>
+
+<section id="trouble"><h2>Troubleshooting</h2>
+<dl class="doc-dl"><dt>Mac says the app is damaged</dt><dd>Run <code>xattr -cr /Applications/Anvil.app</code>.</dd><dt>Git says it couldn't sign in</dt><dd>Run the same command once in the terminal to sign in, then try again.</dd><dt>ESLint shows nothing</dt><dd>Check that you allowed it for this project, and that <code>npm install</code> has been run.</dd><dt>Python can't find a package</dt><dd>Allow the project so Anvil can use its <code>.venv</code>, or install the package in your Python.</dd><dt>The local model feels slow</dt><dd>Close heavy apps and use the graphics chip setting above. See <a href="/faq">the FAQ</a> for what to expect.</dd></dl>
+<p>Still stuck? <a href="https://github.com/okba-bouziane/anvil/issues">Report a problem on GitHub</a>.</p>
+</section>
+</main>
+</div>
+<footer>
+  <a class="brand" href="/"><span class="mark" data-logo></span>Anvil</a>
+  <span>Open source under the MIT license.</span>
+  <a href="/docs">Docs</a><a href="/faq">FAQ</a><a href="https://github.com/okba-bouziane/anvil">GitHub</a><a href="https://github.com/okba-bouziane/anvil/issues">Report a problem</a>
+  <span class="right">Made by <a href="https://devokba.vercel.app">Okba Bouziane</a></span>
+</footer>
+<script src="/page.js"></script>
+</body>
+</html>

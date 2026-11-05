@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import type { AgentMode, ChatSummary, Checkpoint, Effort, OpenAiEffort, Settings, Stats, UiItem } from '../../shared/types'
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import type { AgentMode, ChatSummary, Checkpoint, Effort, FileChange, OpenAiEffort, Settings, Stats, UiItem } from '../../shared/types'
 import { isCloud, PROVIDER_LABEL } from '../../shared/types'
-import { Icon } from './Icon'
+import { FileIcon, Icon, Logo } from './Icon'
 import { MOD } from './keys'
 
 const api = window.anvil
@@ -127,6 +127,8 @@ export interface ChatProps {
   ready: boolean
   activeFile: string | null
   files: string[]
+  changes: FileChange[]
+  selectedFile: string | null
   onOpenFile(path: string): void
   onError(e: unknown): void
   onNewChat(): void
@@ -135,6 +137,49 @@ export interface ChatProps {
   onSetting(patch: Partial<Settings>): void
   onOpenModels(): void
   onBeforeSend(): Promise<void>
+}
+
+/** Every file the agent changed, above the chat box. Keep or undo them all, or open the list and handle each file. */
+export function ChangesBar({ changes, selected, onOpen, onError }: { changes: FileChange[]; selected: string | null; onOpen(path: string): void; onError(e: unknown): void }) {
+  const [open, setOpen] = useState(false)
+  if (!changes.length) return null
+  const added = changes.reduce((n, c) => n + c.added, 0)
+  const removed = changes.reduce((n, c) => n + c.removed, 0)
+  const act = (e: MouseEvent, run: () => Promise<unknown>) => {
+    e.stopPropagation()
+    void run().catch(onError)
+  }
+  return (
+    <div className={`changes-bar ${open ? 'open' : ''}`}>
+      <div className="changes-list-wrap"><div className="changes-list" aria-hidden={!open}>
+        {changes.map((c) => {
+          const slash = c.path.lastIndexOf('/')
+          return (
+            <div key={c.path} className={`change-row ${selected === c.path ? 'selected' : ''}`} title={c.path} role="button" tabIndex={open ? 0 : -1} onClick={() => onOpen(c.path)} onKeyDown={(e) => { if (e.key === 'Enter') onOpen(c.path) }}>
+              <FileIcon name={c.path.slice(slash + 1)} />
+              <span className="change-name"><b>{c.path.slice(slash + 1)}</b><small>{c.path.slice(0, Math.max(slash, 0))}</small></span>
+              <span className="counts"><b className="plus">+{c.added}</b> <b className="minus">−{c.removed}</b></span>
+              <span className="change-actions">
+                <button className="icon-btn change-keep" tabIndex={open ? 0 : -1} aria-label={`Keep ${c.path}`} title="Keep this file" onClick={(e) => act(e, () => api.acceptFile(c.path))}><Icon name="check" size={13} /></button>
+                <button className="icon-btn change-undo" tabIndex={open ? 0 : -1} aria-label={`Undo ${c.path}`} title="Undo this file" onClick={(e) => act(e, () => api.rejectFile(c.path))}><Icon name="undo" size={13} /></button>
+              </span>
+            </div>
+          )
+        })}
+      </div></div>
+      <div className="changes-head">
+        <button className="changes-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+          <span className={`tree-caret ${open ? 'open' : ''}`}><Icon name="chevron" size={11} /></span>
+          <span className="badge">{changes.length}</span>
+          <span>{changes.length === 1 ? 'file changed' : 'files changed'}</span>
+          <span className="counts"><b className="plus">+{added}</b> <b className="minus">−{removed}</b></span>
+        </button>
+        <span className="spacer" />
+        <button className="keep" onClick={() => void api.acceptAll().catch(onError)}>Keep all</button>
+        <button className="undo" onClick={() => void api.rejectAll().catch(onError)}>Undo all</button>
+      </div>
+    </div>
+  )
 }
 
 export function Chat(p: ChatProps) {
@@ -198,6 +243,7 @@ export function Chat(p: ChatProps) {
       }}>
         {!items.length && (
           <div className="chat-empty">
+            <Logo />
             <h3>{!hasProject ? 'Open a project to start' : ready ? 'What should change?' : 'The agent is optional'}</h3>
             {hasProject && !ready && (
               <>
@@ -250,17 +296,18 @@ export function Chat(p: ChatProps) {
 
       {busy && (
         <div className="live-bar">
-          <span className="pulse" />
-          {live.waiting ? 'Waiting for the model…' : <span>Writing <b>{live.tokensPerSecond.toFixed(1)}</b> tokens/s · {live.tokens} tokens</span>}
+          <Logo motion="working" />
+          {items.some((i) => i.kind === 'approval' && i.status === 'pending') ? 'Waiting for your answer' : live.waiting ? 'Waiting for the model…' : <span>Writing <b>{live.tokensPerSecond.toFixed(1)}</b> tokens/s · {live.tokens} tokens</span>}
         </div>
       )}
 
       <div className="composer">
+        <ChangesBar changes={p.changes} selected={p.selectedFile} onOpen={p.onOpenFile} onError={onError} />
         {matches.length > 0 && (
           <div className="popover mention-popover">
             {matches.map((f, i) => (
               <div key={f} className={`pop-row ${i === mentionAt ? 'selected' : ''}`} onMouseDown={(e) => { e.preventDefault(); pickMention(f) }}>
-                <Icon name="file" size={13} /><span className="pop-title">{f}</span>
+                <FileIcon name={f.split('/').pop() ?? f} /><span className="pop-title">{f}</span>
               </div>
             ))}
           </div>
@@ -295,7 +342,7 @@ export function Chat(p: ChatProps) {
             </button>
             {settings?.provider === 'anthropic' && (
               <select className="effort" id="effort-quick" aria-label="Effort" title="Effort: higher thinks longer and costs more" value={settings.effort} onChange={(e) => p.onSetting({ effort: e.target.value as Effort })}>
-                {(['low', 'medium', 'high', 'xhigh', 'max'] as Effort[]).map((v) => <option key={v} value={v}>{v} effort</option>)}
+                {(['low', 'medium', 'high', 'xhigh', 'max'] as Effort[]).map((v) => <option key={v} value={v}>{v === 'xhigh' ? 'Extra high' : v[0].toUpperCase() + v.slice(1)} effort</option>)}
               </select>
             )}
             {settings?.provider === 'openai' && (

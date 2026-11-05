@@ -27,7 +27,17 @@ export interface Settings {
   theme: 'system' | 'dark' | 'light'
   editor: EditorSettings
   showAgent: boolean
+  showSide: boolean
+  sideWidth: number
+  chatWidth: number
   inlineSuggest: boolean
+  fileIcons: boolean
+  leaveGpuToModel: boolean
+  windowBounds: { x?: number; y?: number; width: number; height: number } | null
+  trustedProjects: string[]
+  fixOnSave: boolean
+  cursorStyle: 'line' | 'block' | 'underline'
+  stickyScroll: boolean
   checkUpdates: boolean
   editorTheme?: string
   lastProject?: string
@@ -46,9 +56,19 @@ export const DEFAULT_SETTINGS: Settings = {
   maxOutputTokens: 4096,
   temperature: 0.2,
   theme: 'system',
-  editor: { fontSize: 12.5, tabSize: 2, wordWrap: false, minimap: false, autoSave: true, formatOnSave: false, blame: true },
+  editor: { fontSize: 13, tabSize: 2, wordWrap: false, minimap: false, autoSave: true, formatOnSave: false, blame: true },
   showAgent: true,
+  showSide: true,
+  sideWidth: 248,
+  chatWidth: 440,
   inlineSuggest: true,
+  fileIcons: true,
+  leaveGpuToModel: false,
+  windowBounds: null,
+  trustedProjects: [],
+  fixOnSave: false,
+  cursorStyle: 'line',
+  stickyScroll: true,
   checkUpdates: true,
   recentProjects: []
 }
@@ -75,7 +95,7 @@ export interface IntelLocation {
 
 export interface IntelDiagnostic extends IntelLocation {
   message: string
-  code: number
+  code: number | string
   severity: 'error' | 'warning'
 }
 
@@ -112,6 +132,23 @@ export interface ImportedTheme {
   dark: boolean
   colors: Record<string, string>
   tokens: { token: string; foreground?: string; fontStyle?: string }[]
+}
+
+export interface ExtensionSupport {
+  level: 'full' | 'partial' | 'none'
+  note: string
+}
+
+export interface ExtensionInfo {
+  id: string
+  namespace: string
+  name: string
+  displayName: string
+  description: string
+  version: string
+  downloads: number
+  icon: string | null
+  support: ExtensionSupport
 }
 
 export interface ImportedAssets {
@@ -201,7 +238,13 @@ export type AgentEvent =
   | { type: 'context'; tokens: number; limit: number }
   | { type: 'chats'; chats: ChatSummary[]; activeChat: string }
   | { type: 'tree' }
-  | { type: 'update'; version: string; url: string }
+  | { type: 'update'; version: string; url: string; canInstall: boolean }
+  | { type: 'update-progress'; percent: number }
+  | { type: 'menu'; id: string }
+  | { type: 'debug'; event: DebugEvent }
+  | { type: 'lsp-diagnostics'; kind: 'python' | 'angular'; path: string; diagnostics: { range: { start: { line: number; character: number }; end: { line: number; character: number } }; message: string; severity?: number; code?: string | number; source?: string }[] }
+  | { type: 'lsp-stopped'; kind: 'python' | 'angular' }
+  | { type: 'update-ready'; label: string }
 
 export interface SearchHit {
   path: string
@@ -246,6 +289,99 @@ export interface GitStatus {
   files: GitFile[]
 }
 
+export type GitOperation = 'merge' | 'rebase' | 'cherry-pick' | 'revert' | null
+
+export interface GitBranch {
+  name: string
+  upstream: string | null
+  current: boolean
+  ahead: number
+  behind: number
+  time: number
+  subject: string
+}
+
+export interface GitStash {
+  index: number
+  message: string
+  time: number
+}
+
+export interface GitDetails {
+  operation: GitOperation
+  conflicts: string[]
+  branches: GitBranch[]
+  remoteBranches: string[]
+  stashes: GitStash[]
+  remotes: string[]
+  lastMessage: string
+}
+
+export interface PullRequest {
+  number: number
+  title: string
+  branch: string
+  author: string
+  url: string
+  draft: boolean
+  review: string
+  updated: number
+}
+
+export interface DebugConfig {
+  kind: 'node-file' | 'npm' | 'node-attach' | 'chrome' | 'python' | 'raw'
+  raw?: Record<string, unknown>
+  name: string
+  file?: string
+  script?: string
+  cwd?: string
+  port?: number
+  url?: string
+  python?: string
+}
+
+export interface DebugFrame {
+  id: number
+  name: string
+  line: number
+  column: number
+  path: string | null
+  source: string
+}
+
+export type DebugEvent =
+  | { kind: 'state'; state: 'starting'; name: string }
+  | { kind: 'state'; state: 'running' | 'stopped' }
+  | { kind: 'state'; state: 'paused'; threadId: number; reason: string; description?: string; frames: DebugFrame[] }
+  | { kind: 'output'; category: string; text: string }
+  | { kind: 'breakpoint-changed' }
+
+export interface DebugVariable {
+  name: string
+  value: string
+  type?: string
+  variablesReference: number
+}
+
+export interface LintMessage {
+  line: number
+  column: number
+  endLine: number
+  endColumn: number
+  message: string
+  rule: string | null
+  severity: 'error' | 'warning'
+  fix: { start: number; end: number; text: string } | null
+}
+
+export interface SearchOptions {
+  caseSensitive: boolean
+  regex: boolean
+  wholeWord?: boolean
+  include?: string
+  exclude?: string
+}
+
 export type TerminalEvent = { type: 'data'; id: string; data: string } | { type: 'exit'; id: string }
 
 export interface LocalSetup {
@@ -261,6 +397,11 @@ export type ApprovalAnswer = 'once' | 'always' | 'deny'
 export interface ProjectState {
   root: string
   name: string
+  folders: string[] | null
+  workspaceFile: string | null
+  repos: string[]
+  activeRepo: string | null
+  vscodeEditor: Partial<EditorSettings>
   branch: string | null
   items: UiItem[]
   changes: FileChange[]
@@ -277,23 +418,68 @@ export interface AnvilApi {
   localSetup(): Promise<LocalSetup>
   intel<T = unknown>(method: string, ...args: unknown[]): Promise<T>
   listScripts(): Promise<ScriptEntry[]>
-  replaceInProject(query: string, options: { caseSensitive: boolean; regex: boolean }, replacement: string): Promise<{ files: number; matches: number }>
+  replaceInProject(query: string, options: SearchOptions, replacement: string): Promise<{ files: number; matches: number }>
   suggest(path: string, prefix: string, suffix: string): Promise<string>
   cancelSuggest(): Promise<void>
   openRelease(url: string): Promise<void>
+  uiGet<T = unknown>(key: string): Promise<T | null>
+  uiSet(key: string, value: unknown): Promise<void>
+  closeProject(): Promise<void>
+  workspaceAddFolder(): Promise<ProjectState | null>
+  workspaceRemoveFolder(path: string): Promise<ProjectState>
+  workspaceSave(): Promise<ProjectState | null>
+  workspaceOpen(): Promise<ProjectState | null>
+  openFileDialog(): Promise<string | null>
+  gitClone(url: string): Promise<ProjectState | null>
+  gitSelectRepo(repo: string): Promise<string>
+  gitStatusAll(): Promise<Record<string, string>>
+  vscodeTasks(): Promise<{ label: string; command: string; cwd: string }[]>
+  vscodeLaunch(active: string | null): Promise<{ name: string; folder: string; config: Record<string, unknown> }[]>
+  extensionsSearch(query: string): Promise<ExtensionInfo[]>
+  extensionsInstalled(): Promise<ExtensionInfo[]>
+  extensionsInstall(namespace: string, name: string): Promise<ExtensionInfo>
+  extensionsUninstall(id: string): Promise<void>
+  newWindow(folder?: string): Promise<void>
+  installCommand(): Promise<string>
+  debugStart(config: DebugConfig, breakpoints: Record<string, { line: number; condition?: string }[]>): Promise<void>
+  debugStop(): Promise<void>
+  debugBreakpoints(path: string, list: { line: number; condition?: string }[]): Promise<void>
+  debugControl(action: 'continue' | 'next' | 'stepIn' | 'stepOut' | 'pause', threadId: number): Promise<void>
+  debugScopes(frameId: number): Promise<{ name: string; variablesReference: number; expensive?: boolean }[]>
+  debugVariables(reference: number): Promise<DebugVariable[]>
+  debugEvaluate(expression: string, frameId: number | null, context: 'watch' | 'repl'): Promise<{ result: string; variablesReference: number }>
+  debugPython(): Promise<string>
+  lspStatus(): Promise<{ angular: boolean }>
+  lspOpen(kind: 'python' | 'angular', path: string, languageId: string, text: string): Promise<void>
+  lspChange(kind: 'python' | 'angular', path: string, text: string): Promise<void>
+  lspClose(kind: 'python' | 'angular', path: string): Promise<void>
+  lspRequest<T = unknown>(kind: 'python' | 'angular', method: string, path: string, params: Record<string, unknown>): Promise<T>
+  toolingStatus(): Promise<{ eslint: boolean; prettier: boolean; trusted: boolean }>
+  toolingTrust(): Promise<void>
+  tooling<T = unknown>(method: 'lint' | 'fixAll' | 'format', path: string, text: string): Promise<T>
+  revealPath(path: string): Promise<void>
+  readImage(path: string): Promise<string>
+  gitHead(path: string): Promise<string>
+  gitDetails(): Promise<GitDetails>
+  gitPullRequests(): Promise<{ state: 'ok' | 'no-gh' | 'error'; message?: string; list: PullRequest[] }>
+  gitOp(name: string, ...args: unknown[]): Promise<unknown>
+  appVersion(): Promise<string>
+  checkUpdate(): Promise<{ current: string; latest: string | null }>
+  downloadUpdate(): Promise<void>
+  applyUpdate(): Promise<void>
   importVscode(): Promise<VscodeImport>
   importedAssets(): Promise<ImportedAssets>
   createPath(path: string, isDir: boolean): Promise<void>
   renamePath(from: string, to: string): Promise<void>
   deletePath(path: string): Promise<void>
-  searchProject(query: string, options: { caseSensitive: boolean; regex: boolean }): Promise<SearchHit[]>
+  searchProject(query: string, options: SearchOptions): Promise<SearchHit[]>
   gitStatus(): Promise<GitStatus>
   gitInit(): Promise<void>
   gitStage(paths: string[], stage: boolean): Promise<void>
   gitDiscard(path: string): Promise<void>
   gitCommit(message: string): Promise<void>
   gitSync(action: 'pull' | 'push'): Promise<string>
-  gitDiff(path: string): Promise<{ original: string; modified: string }>
+  gitDiff(path: string, mode?: 'worktree' | 'staged'): Promise<{ original: string; modified: string }>
   gitLog(limit: number, path?: string): Promise<CommitInfo[]>
   gitCommitFiles(sha: string): Promise<CommitFile[]>
   gitCommitDiff(sha: string, path: string): Promise<{ original: string; modified: string }>

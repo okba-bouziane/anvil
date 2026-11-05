@@ -8,21 +8,21 @@
 <meta property="og:title" content="Anvil, the code editor that works with the Wi-Fi off">
 <meta property="og:description" content="A free, open source code editor. Use it with no AI, with a model on your own computer, or with your own API key.">
 <meta property="og:image" content="/img/review.png">
-<meta name="theme-color" content="#08080c">
+<meta name="theme-color" content="#131211">
 <link rel="icon" href="/img/icon.png">
-<link rel="preload" href="/fonts/display.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <div class="progress" id="progress" aria-hidden="true"></div>
 
 <header class="nav">
-  <a class="brand" href="#top" aria-label="Anvil home"><span class="mark"></span>Anvil</a>
+  <a class="brand" href="#top" aria-label="Anvil home"><span class="mark" data-logo="hop"></span><span class="word">Anvil</span></a>
   <nav aria-label="Main">
-    <a href="#story">How it works</a>
-    <a href="#tools">Tools</a>
+    <a href="#features">Features</a>
     <a href="#ways">AI options</a>
-    <a href="#questions">Questions</a>
+    <a href="/docs">Docs</a>
+    <a href="/faq">FAQ</a>
     <a href="https://github.com/okba-bouziane/anvil">GitHub</a>
   </nav>
   <a class="btn primary small" href="#download">Download</a>
@@ -30,35 +30,32 @@
 
 <main id="top">
 
-<section class="hero">
-  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
-  <div class="floor" aria-hidden="true"></div>
-  <canvas id="sparks" aria-hidden="true"></canvas>
-
+<section class="hero" id="hero">
+  <canvas id="field" aria-hidden="true"></canvas>
   <div class="hero-copy">
-    <a class="badge" href="https://github.com/okba-bouziane/anvil/releases/latest"><b>v0.2</b> Commit tree, live errors and effort control <span aria-hidden="true">→</span></a>
-    <h1><span class="line"><span>The code editor</span></span><span class="line"><span>that works with</span></span><span class="line"><span class="glow">the Wi-Fi off</span></span></h1>
-    <p class="sub">Free and open source. Code with no AI at all, with a model on your own computer, or with your own API key. Your choice, and you can change it any time.</p>
+    <span class="mark hero-logo" data-logo="hop"></span>
+    <h1><span class="line"><span>The code editor</span></span><span class="line"><span>that works with</span></span><span class="line"><span>the Wi-Fi off</span></span></h1>
+    <p>Free and open source. Code with no AI at all, with a model on your own computer, or with your own API key.</p>
     <div class="cta">
-      <a class="btn primary large" id="hero-download" href="#download"><span class="shine" aria-hidden="true"></span>Download Anvil</a>
+      <a class="btn primary large" id="hero-download" href="#download">Download Anvil</a>
       <a class="btn large" href="https://github.com/okba-bouziane/anvil">View the code</a>
     </div>
-    <p class="meta">MIT license · Mac, Windows and Linux · No account</p>
   </div>
+</section>
 
+<section class="product">
   <div class="stage" id="stage">
-    <div class="stage-glow" aria-hidden="true"></div>
     <div class="window" id="window">
       <div class="win-bar">
         <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span class="win-title"><span class="mark tiny"></span>invoice-api</span>
-        <button class="wifi" id="wifi" role="switch" aria-checked="false"><span id="wifi-label">Wi-Fi on</span><span class="switch"></span></button>
+        <span class="win-title"><span class="mark tiny" id="win-logo" data-logo></span>invoice-api</span>
+        <button class="wifi" id="wifi" type="button" role="switch" aria-checked="false"><span id="wifi-label">Wi-Fi on</span><span class="switch"></span></button>
       </div>
       <div class="win-body">
         <aside class="win-files" aria-hidden="true">
           <div class="file dir">src</div>
           <div class="file">discount.ts</div>
-          <div class="file on">invoice.ts <i></i></div>
+          <div class="file on">invoice.ts</div>
           <div class="file">money.ts</div>
           <div class="file muted">package.json</div>
           <div class="file muted">tsconfig.json</div>
@@ -75,198 +72,170 @@
       </div>
       <div class="win-status"><span id="where">Stays on this computer</span><span>TypeScript</span></div>
     </div>
-    <p class="stage-note">A replay of a real run: a 6 GB model on a 16 GB MacBook. Flip the Wi-Fi, then press <b>Keep</b> or <b>Undo</b>.</p>
   </div>
-</section>
-
-<section class="marquee" aria-label="Works with">
-  <div class="track" aria-hidden="true" id="marquee"></div>
-  <p class="sr">Works with MLX, Ollama, LM Studio, Anthropic, OpenAI, Git, npm, TypeScript and JavaScript.</p>
+  <p class="stage-note">A replay of a real run: a 6 GB model on a 16 GB MacBook. Turn the Wi-Fi off, then press Keep or Undo.</p>
 </section>
 
 <section class="story" id="story">
-  <div class="story-head reveal">
-    <span class="kicker">Built for models that make mistakes</span>
-    <h2>Every mistake is cheap</h2>
+  <div class="story-head">
+    <h2>Models make mistakes. Anvil makes them cheap to undo.</h2>
   </div>
   <div class="story-grid">
-    <div class="story-steps">
+    <div class="story-steps" id="story-steps">
+      <div class="rail" aria-hidden="true"><i id="rail"></i></div>
       <article class="story-step" data-shot="0">
-        <span class="num">01</span>
         <h3>Watch it write</h3>
         <p>Code appears as the model writes it, with its real speed beside it. Press Stop the moment it goes the wrong way.</p>
       </article>
       <article class="story-step" data-shot="1">
-        <span class="num">02</span>
         <h3>Keep or undo each block</h3>
         <p>Every edit lands as a diff. Take the good parts of a change and throw out the rest, or undo every file from a step with one click.</p>
       </article>
       <article class="story-step" data-shot="2">
-        <span class="num">03</span>
         <h3>It checks its own work</h3>
         <p>After each edit, your project's TypeScript runs. Anvil adds missing imports itself and sends other errors back to the model to fix.</p>
       </article>
       <article class="story-step" data-shot="3">
-        <span class="num">04</span>
         <h3>You stay in charge</h3>
         <p>Nothing runs in your shell until you approve it. A model that repeats itself gets stopped and told why, so it can't loop forever.</p>
       </article>
     </div>
     <div class="story-stage">
       <div class="story-frame">
-        <img class="shot on" src="/img/live.png" width="1800" height="1095" alt="Code appearing live in Anvil's chat as the model writes it">
-        <img class="shot" src="/img/review.png" width="1800" height="1095" loading="lazy" alt="A change with Keep and Undo buttons on the block">
-        <img class="shot" src="/img/check.png" width="1800" height="1095" loading="lazy" alt="A TypeScript error underlined in the editor, with the Problems panel open">
-        <img class="shot" src="/img/terminal.png" width="1800" height="1095" loading="lazy" alt="The built-in terminal beside a finished step">
+        <img class="shot on at-right" src="/img/live.png" width="2000" height="1217" alt="Code appearing live in Anvil's chat as the model writes it">
+        <img class="shot" src="/img/review.png" width="2000" height="1217" loading="lazy" alt="A change with Keep and Undo buttons on the block">
+        <img class="shot" src="/img/check.png" width="2000" height="1217" loading="lazy" alt="A TypeScript error underlined in the editor, with the Problems panel open">
+        <img class="shot at-right" src="/img/approve.png" width="2000" height="1217" loading="lazy" alt="Anvil asking before it runs a command">
       </div>
-      <p class="story-note">Real screenshots from the app.</p>
     </div>
   </div>
 </section>
 
-<section class="tools" id="tools">
-  <div class="section-head reveal">
-    <span class="kicker">No AI needed</span>
-    <h2>A real editor comes first</h2>
+<section class="features" id="features">
+  <div class="section-intro">
+    <h2>Everything you use all day, with no AI at all</h2>
     <p>Install it and start coding with no model, no account and no key. Press one shortcut and the agent is gone.</p>
   </div>
 
-  <div class="bento">
-    <article class="card wide tree reveal">
-      <div class="card-copy"><h3>See your whole history</h3><p>Every branch as a commit tree, free. Search it, open any commit, and compare every file it changed.</p></div>
-      <div class="graph" id="graph" aria-hidden="true"></div>
-    </article>
+  <article class="feature">
+    <div class="feature-copy">
+      <h3>Git without leaving the editor</h3>
+      <p>Commit, branch, merge, rebase and stash. Stage a single block. Resolve conflicts with one click. See every branch as a commit tree, free.</p>
+      <ul><li>Keep current, incoming or both on each conflict</li><li>Cherry-pick, revert and reset from the commit tree</li><li>Who changed each line, and why</li><li>Pull requests through GitHub's <code>gh</code></li></ul>
+      <a class="more" href="/docs#git">Git guide</a>
+    </div>
+    <div class="feature-shot"><img src="/img/git.png" width="2000" height="1217" loading="lazy" alt="The Git panel beside a commit tree of every branch"></div>
+  </article>
 
-    <article class="card term reveal">
-      <div class="card-copy"><h3>A real terminal</h3><p>Real shells with tabs, in your project folder.</p></div>
-      <pre class="typing" id="typing" aria-hidden="true"></pre>
-    </article>
+  <article class="feature flip">
+    <div class="feature-copy">
+      <h3>A real debugger</h3>
+      <p>Breakpoints, stepping, variables, watch expressions and a console, for Node.js, TypeScript and Python.</p>
+      <ul><li>Debug any npm script, with source maps</li><li>Conditional breakpoints</li><li>Reads your <code>launch.json</code></li></ul>
+      <a class="more" href="/docs#debug">Debugging guide</a>
+    </div>
+    <div class="feature-shot"><img src="/img/debug.png" width="2000" height="1217" loading="lazy" alt="A program paused on a breakpoint, with the call stack and variables"></div>
+  </article>
 
-    <article class="card errors reveal">
-      <div class="card-copy"><h3>Errors as you type</h3><p>The engine behind VS Code's TypeScript, across your whole project, before you save.</p></div>
-      <div class="squiggle" aria-hidden="true">
-        <code><b class="k">const</b> total: <b class="t">string</b> = <u>addUp(1, 2)</u></code>
-        <div class="tip">Type 'number' is not assignable to type 'string'.</div>
-      </div>
-    </article>
+  <article class="feature">
+    <div class="feature-copy">
+      <h3>Code help that works offline</h3>
+      <p>The engines are in the app, so errors and completion keep working on a plane.</p>
+      <ul><li>TypeScript and JavaScript across your whole project</li><li>Python with Pyright</li><li>Angular templates with the Angular language server</li><li>Your project's own ESLint and Prettier</li></ul>
+      <a class="more" href="/docs#code-help">What's covered</a>
+    </div>
+    <div class="feature-shot"><img src="/img/check.png" width="2000" height="1217" loading="lazy" alt="A type error underlined in the editor, with the Problems panel open"></div>
+  </article>
 
-    <article class="card blame reveal">
-      <div class="card-copy"><h3>Who changed this line?</h3><p>The author, date and reason, right at the end of the line you're on.</p></div>
-      <div class="blame-lines" aria-hidden="true">
-        <div><code>const sub = subtotal(lines)</code></div>
-        <div class="on"><code>const tax = roundCents(sub)</code><em>Amina, 2 days ago · Round tax to cents</em></div>
-        <div><code>return roundCents(sub + tax)</code></div>
-      </div>
-    </article>
+  <article class="feature flip">
+    <div class="feature-copy">
+      <h3>Come over from VS Code</h3>
+      <p>Bring your settings, snippets and themes with one button. Anvil reads your <code>.vscode</code> files and <code>.code-workspace</code> workspaces, and installs themes and snippets from Open VSX.</p>
+      <ul><li>Workspaces with several folders and repositories</li><li>New windows and side-by-side editing</li><li>Program extensions don't run yet, and each one is labeled</li></ul>
+      <a class="more" href="/docs#vscode">Moving over</a>
+    </div>
+    <div class="feature-shot"><img src="/img/extensions.png" width="2000" height="1217" loading="lazy" alt="The Extensions panel, showing what each extension can do in Anvil"></div>
+  </article>
 
-    <article class="card effort reveal">
-      <div class="card-copy"><h3>Choose the effort</h3><p>With Anthropic or OpenAI, set how hard the model thinks, right from the chat box.</p></div>
-      <div class="effort-box">
-        <div class="effort-bars" id="bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-        <div class="effort-picks" role="group" aria-label="Effort example">
-          <button type="button" data-e="1">Low</button><button type="button" data-e="2">Med</button><button type="button" data-e="3" class="on">High</button><button type="button" data-e="4">Extra</button><button type="button" data-e="5">Max</button>
-        </div>
-      </div>
-    </article>
-
-    <article class="card wide list reveal">
-      <div class="card-copy"><h3>And the rest of your day</h3></div>
-      <ul class="chips">
-        <li>Completion with auto-imports</li><li>Go to definition</li><li>Rename across files</li><li>Find references</li><li>Project search and replace</li><li>Git branches, commits, pull, push</li><li>File history</li><li>One-click npm scripts</li><li>Auto-save</li><li>Format on save</li><li>Light and dark themes</li><li>Import settings, snippets and themes from VS Code</li><li>Grey suggestions from a local model</li>
-      </ul>
-    </article>
+  <div class="rest">
+    <h3>And the rest of your day</h3>
+    <ul>
+      <li>Command palette and full menu bar</li><li>Terminal with tabs and split</li><li>Clickable paths in terminal output</li><li>Project search with file filters</li><li>Tabs that come back after a restart</li><li>Outline and go to symbol</li><li>Zen mode</li><li>Emmet and closing HTML tags</li><li>Markdown and image previews</li><li>Material file icons</li><li>Changes from outside show up by themselves</li><li>One-click npm scripts and tasks</li><li>Light and dark themes</li><li>Update button built in</li><li>Auto-save and format on save</li>
+    </ul>
   </div>
 </section>
 
 <section class="ways" id="ways">
-  <div class="section-head reveal">
-    <span class="kicker">AI is optional</span>
-    <h2>Three ways to work</h2>
+  <div class="ways-head">
+    <h2>AI is optional. Pick how much.</h2>
     <p>Switch whenever you like. The app always tells you whether your code stays on your computer.</p>
   </div>
-  <div class="way-switch reveal" role="tablist" aria-label="Ways to use Anvil">
-    <span class="way-pill" id="way-pill" aria-hidden="true"></span>
-    <button role="tab" aria-selected="true" data-way="0">No AI</button>
-    <button role="tab" aria-selected="false" data-way="1">On your computer</button>
-    <button role="tab" aria-selected="false" data-way="2">Your API key</button>
-  </div>
-  <div class="way-panels reveal">
-    <div class="way-panel on" role="tabpanel">
-      <div><h3>Nothing to set up</h3><p>Open a folder and code. Errors, completion, the terminal, Git and search all work with no model and no internet.</p></div>
-      <dl><div><dt>Needs</dt><dd>Just the app</dd></div><div><dt>Internet</dt><dd>Not needed</dd></div><div><dt>Your code</dt><dd class="ok">Stays with you</dd></div><div><dt>Cost</dt><dd class="ok">Free</dd></div></dl>
-    </div>
-    <div class="way-panel" role="tabpanel">
-      <div><h3>A model on your own machine</h3><p>MLX on Macs with Apple Silicon, or Ollama and LM Studio on any system. Good for single files, small features and tests, while you review the work.</p></div>
-      <dl><div><dt>Needs</dt><dd>About 6 GB of disk and 16 GB of memory</dd></div><div><dt>Internet</dt><dd>Only to download the model</dd></div><div><dt>Your code</dt><dd class="ok">Stays with you</dd></div><div><dt>Cost</dt><dd class="ok">Free</dd></div></dl>
-    </div>
-    <div class="way-panel" role="tabpanel">
-      <div><h3>The big models, for the big jobs</h3><p>Anthropic, OpenAI or any OpenAI-style server, with the effort level you choose. Your key is encrypted in your system's secure storage.</p></div>
-      <dl><div><dt>Needs</dt><dd>Your own API key</dd></div><div><dt>Internet</dt><dd>Yes</dd></div><div><dt>Your code</dt><dd class="warn">Sent to the provider</dd></div><div><dt>Cost</dt><dd>What the provider charges</dd></div></dl>
-    </div>
+  <div class="ways-table" role="table" aria-label="Ways to use Anvil">
+    <div class="way-row head" role="row"><span role="columnheader"></span><b role="columnheader">No AI</b><b role="columnheader">On your computer</b><b role="columnheader">Your API key</b></div>
+    <div class="way-row" role="row"><span role="rowheader">What you get</span><span role="cell" data-way="No AI">The editor, errors, completion, terminal, Git and search</span><span role="cell" data-way="On your computer">MLX on Apple Silicon, or Ollama and LM Studio. Good for single files, small features and tests</span><span role="cell" data-way="Your API key">Anthropic, OpenAI or any OpenAI-style server, for the big jobs</span></div>
+    <div class="way-row" role="row"><span role="rowheader">Needs</span><span role="cell" data-way="No AI">Just the app</span><span role="cell" data-way="On your computer">About 6 GB of disk and 16 GB of memory</span><span role="cell" data-way="Your API key">Your own key, encrypted in your system's secure storage</span></div>
+    <div class="way-row" role="row"><span role="rowheader">Internet</span><span role="cell" data-way="No AI">Not needed</span><span role="cell" data-way="On your computer">Only to download the model</span><span role="cell" data-way="Your API key">Yes</span></div>
+    <div class="way-row" role="row"><span role="rowheader">Your code</span><span role="cell" class="ok" data-way="No AI">Stays with you</span><span role="cell" class="ok" data-way="On your computer">Stays with you</span><span role="cell" class="warn" data-way="Your API key">Sent to the provider</span></div>
+    <div class="way-row" role="row"><span role="rowheader">Cost</span><span role="cell" class="ok" data-way="No AI">Free</span><span role="cell" class="ok" data-way="On your computer">Free</span><span role="cell" data-way="Your API key">What the provider charges</span></div>
   </div>
 </section>
 
 <section class="numbers" id="numbers">
-  <div class="section-head reveal">
-    <span class="kicker">One real test</span>
-    <h2>Measured, not promised</h2>
-    <p>A MacBook with an M1 Pro and 16 GB of memory, running a 6 GB local model.</p>
+  <div class="numbers-copy">
+    <h2>Measured on a 16 GB laptop</h2>
+    <p>A MacBook with an M1 Pro, running a 6 GB local model. The task: add a task priority field across an existing NestJS and Angular project, with no file list or plan.</p>
+    <p>The model changed 11 files and wrote 3 of the tests. The backend passed its type check and the frontend built, though we didn't try the feature in a browser, and earlier versions of this test failed.</p>
   </div>
-  <div class="stat-grid">
-    <div class="stat reveal"><b data-count="24">24</b><span>tokens per second, typical writing speed</span></div>
-    <div class="stat reveal"><b data-count="3">3</b><span>seconds, typical wait for an answer</span></div>
-    <div class="stat reveal"><b data-count="10">10</b><span>minutes to finish the whole task</span></div>
-    <div class="stat reveal"><b data-count="17">17</b><span>of 17 backend tests passing at the end</span></div>
-  </div>
-  <p class="story-text reveal"><b>The task:</b> add a task priority field across an existing NestJS and Angular project, with no file list or plan. The model changed 11 files and wrote 3 of those tests. The backend passed its type check and the frontend built, though we didn't try the feature in a browser, and earlier versions of this test failed.</p>
+  <dl class="readout">
+    <div><dd>24</dd><dt>tokens per second, typical writing speed</dt></div>
+    <div><dd>3</dd><dt>seconds, typical wait for an answer</dt></div>
+    <div><dd>10</dd><dt>minutes to finish the whole task</dt></div>
+    <div><dd>17/17</dd><dt>backend tests passing at the end</dt></div>
+  </dl>
 </section>
 
 <section class="questions" id="questions">
-  <div class="section-head reveal">
-    <span class="kicker">Straight answers</span>
+  <div>
     <h2>What it can't do yet</h2>
+    <p class="questions-links"><a class="more" href="/faq">All questions</a> <a class="more" href="/docs">Documentation</a></p>
   </div>
-  <div class="faq reveal">
-    <details open><summary>Does it replace VS Code?</summary><p>Not for everyone yet. VS Code is far more complete. Anvil covers everyday TypeScript and JavaScript work, and its agent works offline. It has no debugger yet.</p></details>
-    <details><summary>Do VS Code extensions run?</summary><p>No. Extensions like ESLint need VS Code's own engine underneath. One button imports your settings, snippets and color themes, and tells you which extensions it couldn't bring.</p></details>
-    <details><summary>What about other languages, like Python?</summary><p>Other languages get syntax colors, and HTML, CSS and JSON get some completion. Errors, go to definition and rename are for TypeScript and JavaScript only so far.</p></details>
+  <div class="faq">
+    <details open><summary>Does it replace VS Code?</summary><p>For many people working in TypeScript, Angular or Python, it can cover the daily work. VS Code is far more mature, so if you depend on specific extensions, keep it.</p></details>
+    <details><summary>Do VS Code extensions run?</summary><p>Themes and snippets do. Extensions that are programs don't, because they're written for VS Code's internal engine.</p></details>
     <details><summary>Can a local model build a whole project by itself?</summary><p>Not reliably. Small models are good at single files and small features while you review the work. For a whole project, use a bigger model through an API key.</p></details>
-    <details><summary>Is it safe to let the model run commands?</summary><p>Commands ask first by default. Once you approve one, it runs with your full user permissions, and Anvil can't undo what it changes. Leave Auto-run off unless you trust the project.</p></details>
-    <details><summary>How well tested is it?</summary><p>The test suite runs on Mac, Windows and Linux machines. It's a new project, though: Windows and Linux haven't been used on real desktops much yet, and the Anthropic and OpenAI connections haven't been tried with real keys. Please report what you find.</p></details>
+    <details><summary>How well tested is it?</summary><p>The test suite runs on Mac, Windows and Linux machines. It's a new project, though, and the Anthropic and OpenAI connections haven't been tried with real keys yet. Please report what you find.</p></details>
   </div>
 </section>
 
 <section class="download" id="download">
-  <canvas id="sparks2" aria-hidden="true"></canvas>
-  <div class="section-head center reveal">
-    <h2 class="huge">Start forging</h2>
-    <p>Free, with no account. Pick your system.</p>
-  </div>
-  <div class="oses">
-    <div class="os reveal" data-os="mac">
+  <h2>Download Anvil</h2>
+  <p class="download-sub">Free, with no account. Pick your system.</p>
+  <div class="oses" id="oses">
+    <div class="os" data-os="mac">
       <h3>Mac</h3>
-      <p>For Apple Silicon. Apple hasn't notarized it yet, so run this once after moving it to Applications:</p>
-      <pre class="cmd">xattr -cr /Applications/Anvil.app</pre>
-      <a class="btn primary" href="https://github.com/okba-bouziane/anvil/releases/latest/download/Anvil-mac-arm64.zip">Download for Mac</a>
+      <div class="os-text"><p>For Apple Silicon. Apple hasn't notarized it yet, so run this once after moving it to Applications:</p><pre class="cmd">xattr -cr /Applications/Anvil.app</pre></div>
+      <a class="btn" href="https://github.com/okba-bouziane/anvil/releases/latest/download/Anvil-mac-arm64.zip">Download for Mac</a>
     </div>
-    <div class="os reveal" data-os="windows">
+    <div class="os" data-os="windows">
       <h3>Windows</h3>
-      <p>For 64-bit Windows. The installer isn't signed yet, so SmartScreen may warn you the first time.</p>
-      <a class="btn primary" href="https://github.com/okba-bouziane/anvil/releases/latest/download/Anvil-win-x64.exe">Download for Windows</a>
+      <div class="os-text"><p>For 64-bit Windows. The installer isn't signed yet, so SmartScreen may warn you the first time.</p></div>
+      <a class="btn" href="https://github.com/okba-bouziane/anvil/releases/latest/download/Anvil-win-x64.exe">Download for Windows</a>
     </div>
-    <div class="os reveal" data-os="linux">
+    <div class="os" data-os="linux">
       <h3>Linux</h3>
-      <p>For 64-bit Linux, as an AppImage that runs without installing. Or get the <a href="https://github.com/okba-bouziane/anvil/releases/latest/download/Anvil-linux-amd64.deb">.deb package</a>.</p>
-      <a class="btn primary" href="https://github.com/okba-bouziane/anvil/releases/latest/download/Anvil-linux-x86_64.AppImage">Download AppImage</a>
+      <div class="os-text"><p>For 64-bit Linux, as an AppImage that runs without installing. Or get the <a href="https://github.com/okba-bouziane/anvil/releases/latest/download/Anvil-linux-amd64.deb">.deb package</a>.</p></div>
+      <a class="btn" href="https://github.com/okba-bouziane/anvil/releases/latest/download/Anvil-linux-x86_64.AppImage">Download AppImage</a>
     </div>
   </div>
-  <p class="source reveal">Prefer to <a href="https://github.com/okba-bouziane/anvil#or-build-it-yourself">build it from source</a>? See all files on <a href="https://github.com/okba-bouziane/anvil/releases/latest">the releases page</a>.</p>
+  <p class="source">Prefer to <a href="https://github.com/okba-bouziane/anvil#or-build-it-yourself">build it from source</a>? See all files on <a href="https://github.com/okba-bouziane/anvil/releases/latest">the releases page</a>.</p>
 </section>
 </main>
 
 <footer>
-  <a class="brand" href="#top"><span class="mark"></span>Anvil</a>
+  <a class="brand" href="#top"><span class="mark" data-logo></span>Anvil</a>
   <span>Open source under the MIT license.</span>
+  <a href="/docs">Docs</a>
+  <a href="/faq">FAQ</a>
   <a href="https://github.com/okba-bouziane/anvil">GitHub</a>
   <a href="https://github.com/okba-bouziane/anvil/issues">Report a problem</a>
   <span class="right">Made by <a href="https://devokba.vercel.app">Okba Bouziane</a></span>

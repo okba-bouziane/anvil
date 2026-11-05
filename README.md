@@ -19,15 +19,29 @@ When you do use AI, Anvil is built around a small model running on your own lapt
 ## Features
 
 **Editor (no AI needed)**
-- Monaco editor with tabs, and edits that survive switching tabs
+- Monaco editor with tabs you can drag, close in groups and reopen, and edits that survive switching tabs
+- Two files side by side (`Cmd/Ctrl+\\`), resizable panels, and a command palette for every action (`Cmd/Ctrl+Shift+P`)
+- A full menu bar, and keyboard shortcuts that match VS Code for the main actions
+- Several projects at once in separate windows (`Cmd/Ctrl+Shift+N`), and an `anvil` terminal command on Mac and Linux
+- Workspaces with several folders, using VS Code's `.code-workspace` files, with Git for each repository
+- Reads `.vscode/settings.json`, `tasks.json` and `launch.json`
+- Open tabs come back after a restart, plus outline, zen mode and a split terminal
+- Extensions panel connected to Open VSX: themes and snippets install and work. Extensions that are programs are marked as not runnable yet
+- Files changed by the terminal or other programs update by themselves
+- Markdown and image previews, Emmet, HTML tag closing, sticky scroll and Material file icons
 - Auto-save, format on save, word wrap, minimap, font and tab size
 - Light, dark and system themes
-- Built-in terminal with tabs (`Cmd/Ctrl+J`)
+- Built-in terminal with tabs (`Cmd/Ctrl+J`), a resizable height, and clickable addresses and file paths
 - Create, rename and delete files (deleted files go to the Trash)
-- Open a file (`Cmd/Ctrl+P`), then search and replace across the project (`Cmd/Ctrl+Shift+F`). Replacements can be reviewed and undone
+- Open a file (`Cmd/Ctrl+P`), then search and replace across the project (`Cmd/Ctrl+Shift+F`), with whole-word matching and include or exclude patterns. Replacements can be reviewed and undone
 - Run npm scripts with one click
-- Git panel: start a repository, stage, commit, discard, compare, pull and push, and create or switch branches
-- Commit tree: every branch as a graph, searchable, with the files and changes in each commit
+- Git panel: stage and discard whole files or single blocks, commit, amend, fetch, pull, pull with rebase, push and safe force push
+- Branches: create, switch, rename, delete, and follow remote branches
+- Merge, rebase, cherry-pick and revert, with a conflict screen: **Keep current**, **Keep incoming** or **Keep both** on each conflict, then continue or abort
+- Stash, with apply, pop and drop
+- Pull requests through GitHub's `gh` tool: list, check out and create
+- Marks in the margin for lines that differ from the last commit
+- Commit tree: every branch as a graph, searchable, with the files and changes in each commit, and actions on any commit: branch, tag, cherry-pick, revert, reset
 - See who changed the current line, when and why, right in the editor, and the history of any file
 
 **TypeScript and JavaScript (no AI needed)**
@@ -35,6 +49,20 @@ When you do use AI, Anvil is built around a small model running on your own lapt
 - Completion across files, with automatic imports
 - Hover info, signature help and go to definition
 - Find references, rename across files, go to symbol and formatting
+
+**ESLint and Prettier (no AI needed)**
+- Runs your project's own versions with your project's own config, including each package in a monorepo. Anvil asks once per project first, because this runs code from the project
+- ESLint problems as you type, quick fixes, and fix all on save
+- Prettier for format and format on save
+
+**Python and Angular (no AI needed)**
+- Python: errors, completion, hover, go to definition, references and rename from Pyright, included in the app
+- Angular templates: errors, completion, hover and go to definition in `.html` files and inline templates from the Angular language server, included in the app
+
+**Debugger (no AI needed)**
+- Node.js and TypeScript with source maps, npm scripts, attaching to a running process, and Chrome
+- Python, with `debugpy` installed in your Python
+- Breakpoints with conditions, stepping, call stack, variables, watch expressions and a console
 
 **Import from VS Code**
 - One button copies your settings, snippets and color themes
@@ -48,7 +76,8 @@ When you do use AI, Anvil is built around a small model running on your own lapt
 - Suggestions from a local model as grey text while you type, and Tab accepts them
 
 **Agent (optional)**
-- Inline diffs with **Keep** and **Undo** for each block, each file, or everything
+- A list of changed files above the chat box. Keep or undo everything, or open the list to handle each file
+- Inline diffs with **Keep** and **Undo** on each block
 - **Undo this step** restores every file from a step, even changes you already kept
 - Agent, Plan (read-only) and Ask (no tools) modes
 - See code as it's written, with live tokens per second
@@ -144,12 +173,13 @@ The model writes its actions as plain tags, such as `<edit_file path="a.ts">`, i
 
 Anvil is young, and VS Code is far more complete. Today:
 
-- **VS Code extensions don't run.** That needs VS Code's own engine underneath. Only settings, snippets and color themes can be imported, and imported color themes are approximate.
-- **No debugger** yet.
-- **Code help covers TypeScript and JavaScript only.** Other languages get syntax colors, and some completion for HTML, CSS and JSON.
+- **Extensions that are programs don't run.** That needs VS Code's own engine underneath. Themes and snippets work, and color themes are approximate.
+- **Deep code help covers TypeScript, JavaScript, Python and Angular templates.** Other languages get syntax colors, and some completion for HTML, CSS and JSON.
 - **The agent's automatic checks cover TypeScript only.**
-- **Windows and Linux have only been tested on automated test machines**, not by people on real desktops.
+- **The editor and terminal split into two sides at most.**
+- **Windows and Linux have only been tested on automated test machines**, not by people on real desktops. New features haven't reached those machines yet.
 - **The Anthropic and OpenAI connections have only been tested against stand-in servers** so far, so please report any problems.
+- **Pull requests, the Chrome debugger and the update button haven't been run for real yet.**
 - MLX needs a Mac with Apple Silicon.
 
 ## Contributing
@@ -159,3 +189,11 @@ Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## License
 
 [MIT](LICENSE)
+
+File icons come from [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme), MIT license.
+
+The dark editor's code colors come from [Andromeda](https://github.com/EliverLara/Andromeda), MIT license.
+
+Python help comes from [Pyright](https://github.com/microsoft/pyright), Angular template help from the [Angular language server](https://github.com/angular/angular), JavaScript debugging from [js-debug](https://github.com/microsoft/vscode-js-debug), all MIT license.
+
+Extensions come from [Open VSX](https://open-vsx.org). Anvil keeps only their data files and never runs their code.

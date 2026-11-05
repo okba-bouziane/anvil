@@ -37,7 +37,7 @@ function insideOf(dir: string, rel: unknown): string | null {
   return full.startsWith(dir + path.sep) ? full : null
 }
 
-function readSnippets(file: string, languages: string[]): ImportedSnippet[] {
+export function readSnippets(file: string, languages: string[]): ImportedSnippet[] {
   const data = readJsonc(file)
   if (!data || typeof data !== 'object') return []
   const out: ImportedSnippet[] = []
@@ -67,7 +67,7 @@ const SCOPE_TO_TOKEN: [RegExp, string][] = [
   [/^variable/, 'identifier']
 ]
 
-function readTheme(file: string, id: string, label: string, uiTheme: string, depth = 0): ImportedTheme | null {
+export function readTheme(file: string, id: string, label: string, uiTheme: string, depth = 0): ImportedTheme | null {
   const data = readJsonc(file)
   if (!data || depth > 3) return null
   const parent = typeof data.include === 'string' && insideOf(path.dirname(path.dirname(file)), path.relative(path.dirname(path.dirname(file)), path.resolve(path.dirname(file), data.include)))

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import type { FileChange, ScriptEntry, TreeEntry } from '../../shared/types'
-import { Icon } from './Icon'
+import type { FileChange, ImportedAssets, ScriptEntry, Settings, TreeEntry } from '../../shared/types'
+import { FileIcon, Icon } from './Icon'
+import { DebugPanel } from './DebugPanel'
+import { ExtensionsPanel } from './ExtensionsPanel'
 import { GitPanel, ScriptsPanel, SearchPanel } from './Panels'
 
 const api = window.anvil
@@ -32,6 +34,8 @@ function NameInput({ initial, depth, onDone, onCancel }: { initial: string; dept
 }
 
 interface DirProps {
+  gitCodes: Record<string, string>
+  onMove(from: string, to: string): void
   path: string
   depth: number
   selected: string | null
@@ -46,7 +50,7 @@ interface DirProps {
 }
 
 function Dir(props: DirProps) {
-  const { path, depth, selected, revision, changed, edit, setEdit, onMenu, submit, onOpen, onError } = props
+  const { path, depth, selected, revision, changed, gitCodes, edit, setEdit, onMenu, onMove, submit, onOpen, onError } = props
   const [entries, setEntries] = useState<TreeEntry[]>([])
   const [open, setOpen] = useState<Record<string, boolean>>({})
   useEffect(() => {
@@ -72,23 +76,44 @@ function Dir(props: DirProps) {
                 style={{ paddingLeft: 12 + depth * 13 }}
                 onClick={() => (e.isDir ? setOpen({ ...open, [e.path]: !open[e.path] }) : onOpen(e.path))}
                 onContextMenu={(ev) => { ev.preventDefault(); onMenu(ev.clientX, ev.clientY, e) }}
+                draggable
+                onDragStart={(ev) => ev.dataTransfer.setData('anvil/path', e.path)}
+                onDragOver={(ev) => { if (e.isDir) ev.preventDefault() }}
+                onDrop={(ev) => {
+                  ev.preventDefault()
+                  const from = ev.dataTransfer.getData('anvil/path')
+                  if (!from || !e.isDir || from === e.path || e.path.startsWith(`${from}/`) || parentOf(from) === e.path) return
+                  onMove(from, join(e.path, from.split('/').pop() ?? from))
+                }}
               >
                 <span className={`tree-caret ${open[e.path] ? 'open' : ''}`}>{e.isDir && <Icon name="chevron" size={11} />}</span>
-                <span className="tree-icon"><Icon name={e.isDir ? 'folder' : 'file'} size={13} /></span>
+                <span className="tree-icon"><FileIcon name={e.name} isDir={e.isDir} open={!!open[e.path]} /></span>
                 <span className="tree-name">{e.name}</span>
                 {changed.has(e.path) && <span className="tree-dot" />}
+                {!e.isDir && gitCodes[e.path] && <span className="tree-git">{gitCodes[e.path]}</span>}
               </div>
             )}
-          {e.isDir && open[e.path] && <Dir {...props} path={e.path} depth={depth + 1} />}
+          {e.isDir && open[e.path] && <div className="tree-kids"><Dir {...props} path={e.path} depth={depth + 1} /></div>}
         </div>
       ))}
     </>
   )
 }
 
-function Tree({ selected, revision, changed, onOpen, onRenamed, onError }: { selected: string | null; revision: number; changed: Set<string>; onOpen(p: string): void; onRenamed(from: string, to: string | null): void; onError(e: unknown): void }) {
+function Tree({ selected, revision, changed, folders, onRemoveFolder, onOpen, onRenamed, onError }: { selected: string | null; revision: number; changed: Set<string>; folders: string[] | null; onRemoveFolder(path: string): void; onOpen(p: string): void; onRenamed(from: string, to: string | null): void; onError(e: unknown): void }) {
   const [edit, setEdit] = useState<Edit | null>(null)
   const [menu, setMenu] = useState<{ x: number; y: number; entry: TreeEntry } | null>(null)
+  const [gitCodes, setGitCodes] = useState<Record<string, string>>({})
+  useEffect(() => {
+    void api.gitStatusAll().then((all) => {
+      const codes: Record<string, string> = {}
+      for (const [path, raw] of Object.entries(all)) {
+        const code = raw.trim()
+        codes[path] = code.startsWith('?') ? 'U' : code.includes('U') ? '!' : code[0]
+      }
+      setGitCodes(codes)
+    }).catch(() => {})
+  }, [revision])
 
   const submit = (name: string) => {
     const current = edit
@@ -114,7 +139,7 @@ function Tree({ selected, revision, changed, onOpen, onRenamed, onError }: { sel
         <button className="icon-btn" aria-label="New folder" title="New folder" onClick={() => setEdit({ kind: 'folder', parent: selected ? parentOf(selected) : '.' })}><Icon name="newfolder" size={14} /></button>
       </div>
       <div className="tree">
-        <Dir path="." depth={0} selected={selected} revision={revision} changed={changed} edit={edit} setEdit={setEdit} submit={submit} onMenu={(x, y, entry) => setMenu({ x, y, entry })} onOpen={onOpen} onError={onError} />
+        <Dir path="." depth={0} selected={selected} revision={revision} changed={changed} gitCodes={gitCodes} onMove={(from, to) => void api.renamePath(from, to).then(() => onRenamed(from, to)).catch(onError)} edit={edit} setEdit={setEdit} submit={submit} onMenu={(x, y, entry) => setMenu({ x, y, entry })} onOpen={onOpen} onError={onError} />
       </div>
       {menu && (
         <>
@@ -123,6 +148,9 @@ function Tree({ selected, revision, changed, onOpen, onRenamed, onError }: { sel
             <div className="pop-row" onClick={() => setEdit({ kind: 'file', parent: dirOf(menu.entry) })}><Icon name="newfile" size={13} />New file</div>
             <div className="pop-row" onClick={() => setEdit({ kind: 'folder', parent: dirOf(menu.entry) })}><Icon name="newfolder" size={13} />New folder</div>
             <div className="pop-row" onClick={() => setEdit({ kind: 'rename', path: menu.entry.path, isDir: menu.entry.isDir })}><Icon name="edit" size={13} />Rename</div>
+            {menu.entry.isDir && folders?.includes(menu.entry.path) && <div className="pop-row" onClick={() => onRemoveFolder(menu.entry.path)}><Icon name="close" size={13} />Remove from workspace</div>}
+            <div className="pop-row" onClick={() => void navigator.clipboard.writeText(menu.entry.path)}><Icon name="file" size={13} />Copy path</div>
+            <div className="pop-row" onClick={() => void api.revealPath(menu.entry.path).catch(onError)}><Icon name="folder" size={13} />Reveal in file manager</div>
             <div className="pop-row danger" onClick={() => remove(menu.entry)}><Icon name="trash" size={13} />Move to Trash</div>
           </div>
         </>
@@ -131,9 +159,37 @@ function Tree({ selected, revision, changed, onOpen, onRenamed, onError }: { sel
   )
 }
 
-export type SidebarTab = 'files' | 'search' | 'changes' | 'git' | 'scripts'
+/** The symbols in the open file, below the file tree. */
+function Outline({ path, revision, onOpenAt }: { path: string | null; revision: number; onOpenAt(path: string, line: number): void }) {
+  const [open, setOpen] = useState(() => localStorage.getItem('anvil.outline') === '1')
+  const [symbols, setSymbols] = useState<{ name: string; kind: string; line: number; container?: string }[]>([])
+  useEffect(() => {
+    localStorage.setItem('anvil.outline', open ? '1' : '0')
+    if (!open || !path || !/\.[cm]?[jt]sx?$/.test(path)) return setSymbols([])
+    let stale = false
+    void api.intel<{ name: string; kind: string; line: number; container?: string }[]>('symbols', path).then((list) => { if (!stale) setSymbols(list) }).catch(() => setSymbols([]))
+    return () => { stale = true }
+  }, [open, path, revision])
+  return (
+    <div className={`outline ${open ? 'open' : ''}`}>
+      <button className="link section-toggle outline-toggle" aria-expanded={open} onClick={() => setOpen(!open)}><span className={`tree-caret ${open ? 'open' : ''}`}><Icon name="chevron" size={10} /></span>Outline</button>
+      {open && (
+        <div className="outline-list">
+          {!symbols.length && <div className="pane-empty small">{path ? 'No symbols in this file.' : 'Open a file.'}</div>}
+          {symbols.map((sym, i) => (
+            <div key={`${sym.name}:${sym.line}:${i}`} className="tree-row" style={{ paddingLeft: sym.container ? 22 : 10 }} onClick={() => path && onOpenAt(path, sym.line)}>
+              <span className="tree-name">{sym.name}</span><small>{sym.kind}</small>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
-export function Sidebar({ changes, selected, revision, tab, setTab, onOpen, onOpenAt, onDiff, onBranch, onRenamed, onRunScript, onBeforeReplace, onHistory, onError }: {
+export type SidebarTab = 'files' | 'search' | 'git' | 'scripts' | 'debug' | 'extensions'
+
+export function Sidebar({ changes, selected, revision, tab, setTab, onOpen, onOpenAt, onDiff, onBranch, onRenamed, onRunScript, onBeforeReplace, onHistory, onError, assets, settings, onAssets, onSettings, folders, repos, activeRepo, onRemoveFolder, onSelectRepo }: {
   changes: FileChange[]
   selected: string | null
   revision: number
@@ -141,21 +197,31 @@ export function Sidebar({ changes, selected, revision, tab, setTab, onOpen, onOp
   setTab(tab: SidebarTab): void
   onOpen(path: string): void
   onOpenAt(path: string, line: number): void
-  onDiff(path: string): void
+  onDiff(path: string, mode?: 'worktree' | 'staged'): void
   onBranch(branch: string | null): void
   onRenamed(from: string, to: string | null): void
   onRunScript(script: ScriptEntry): void
   onBeforeReplace(): Promise<void>
   onHistory(): void
+  folders: string[] | null
+  repos: string[]
+  activeRepo: string | null
+  onRemoveFolder(path: string): void
+  onSelectRepo(repo: string): void
+  assets: ImportedAssets
+  settings: Settings | null
+  onAssets(): void
+  onSettings(patch: Partial<Settings>): void
   onError(e: unknown): void
 }) {
   const changed = new Set(changes.map((c) => c.path))
   const tabs: { id: SidebarTab; label: string; icon: string }[] = [
     { id: 'files', label: 'Files', icon: 'folder' },
     { id: 'search', label: 'Search', icon: 'search' },
-    { id: 'changes', label: 'Changes', icon: 'edit' },
     { id: 'git', label: 'Git', icon: 'branch' },
-    { id: 'scripts', label: 'Scripts', icon: 'play' }
+    { id: 'scripts', label: 'Scripts', icon: 'play' },
+    { id: 'debug', label: 'Debug', icon: 'bug' },
+    { id: 'extensions', label: 'Extensions', icon: 'extensions' }
   ]
   return (
     <div className="sidebar">
@@ -163,34 +229,15 @@ export function Sidebar({ changes, selected, revision, tab, setTab, onOpen, onOp
         {tabs.map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} aria-label={t.label} title={t.label} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
             <Icon name={t.icon} size={15} />
-            {t.id === 'changes' && changes.length > 0 && <span className="badge">{changes.length}</span>}
           </button>
         ))}
       </div>
-      {tab === 'files' && <Tree selected={selected} revision={revision} changed={changed} onOpen={onOpen} onRenamed={onRenamed} onError={onError} />}
+      {tab === 'files' && <><Tree selected={selected} revision={revision} changed={changed} folders={folders} onRemoveFolder={onRemoveFolder} onOpen={onOpen} onRenamed={onRenamed} onError={onError} /><Outline path={selected} revision={revision} onOpenAt={onOpenAt} /></>}
       {tab === 'search' && <SearchPanel onOpen={onOpenAt} onBeforeReplace={onBeforeReplace} onError={onError} />}
       {tab === 'scripts' && <ScriptsPanel revision={revision} onRun={onRunScript} onError={onError} />}
-      {tab === 'git' && <GitPanel revision={revision} onDiff={onDiff} onBranch={onBranch} onHistory={onHistory} onError={onError} />}
-      {tab === 'changes' && (
-        <div className="changes">
-          {changes.length === 0 && <div className="pane-empty small">Nothing to review.</div>}
-          {changes.length > 0 && (
-            <div className="row all">
-              <button className="keep" onClick={() => void api.acceptAll().catch(onError)}><Icon name="check" size={13} />Keep all</button>
-              <button className="undo" onClick={() => void api.rejectAll().catch(onError)}><Icon name="undo" size={13} />Undo all</button>
-            </div>
-          )}
-          {changes.map((c) => {
-            const slash = c.path.lastIndexOf('/')
-            return (
-              <div key={c.path} className={`change-row ${selected === c.path ? 'selected' : ''}`} title={c.path} onClick={() => onOpen(c.path)}>
-                <span className="change-name"><b>{c.path.slice(slash + 1)}</b><small>{c.path.slice(0, Math.max(slash, 0))}</small></span>
-                <span className="counts"><b className="plus">+{c.added}</b> <b className="minus">−{c.removed}</b></span>
-              </div>
-            )
-          })}
-        </div>
-      )}
+      {tab === 'extensions' && <ExtensionsPanel assets={assets} settings={settings} onAssets={onAssets} onSettings={onSettings} onError={onError} />}
+      {tab === 'debug' && <DebugPanel activeFile={selected} revision={revision} onOpenAt={onOpenAt} onError={onError} />}
+      {tab === 'git' && <GitPanel repos={repos} activeRepo={activeRepo} onSelectRepo={onSelectRepo} revision={revision} onOpen={onOpen} onDiff={onDiff} onBranch={onBranch} onHistory={onHistory} onError={onError} />}
     </div>
   )
 }

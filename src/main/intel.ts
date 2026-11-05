@@ -91,7 +91,8 @@ export class Intel {
       },
       getCurrentDirectory: () => dir,
       getCompilationSettings: () => ({ ...current().options, noEmit: true }),
-      getDefaultLibFileName: (o) => ts.getDefaultLibFilePath(o),
+      // In a packaged app these files sit beside the archive, not inside it.
+      getDefaultLibFileName: (o) => ts.getDefaultLibFilePath(o).replace(/app\.asar([\\/])/, 'app.asar.unpacked$1'),
       fileExists: (f) => this.overlays.has(toPosix(f)) || ts.sys.fileExists(f),
       readFile,
       readDirectory: ts.sys.readDirectory,

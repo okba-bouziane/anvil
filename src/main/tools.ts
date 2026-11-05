@@ -24,6 +24,13 @@ export function repairArgs(args: Record<string, unknown>): Record<string, unknow
 }
 
 /** Resolves a model-supplied path and refuses anything outside the project, including through symlinks. */
+/* In a workspace, the project is a shared parent folder, and only the chosen folders are part of it. */
+const scopes = new Map<string, string[]>()
+export function setScope(root: string, folders: string[] | null): void {
+  if (folders) scopes.set(root, folders)
+  else scopes.delete(root)
+}
+
 export function safePath(root: string, input: unknown): string {
   if (typeof input !== 'string' || !input.trim()) throw new Error('A path is required')
   const realRoot = fs.realpathSync(root)
@@ -37,7 +44,10 @@ export function safePath(root: string, input: unknown): string {
   const real = fs.realpathSync(existing)
   const inside = (p: string) => p === realRoot || p.startsWith(realRoot + path.sep)
   if (!inside(full) || !inside(real)) throw new Error(`${input} is outside the project`)
-  return toPosix(path.relative(realRoot, full)) || '.'
+  const rel = toPosix(path.relative(realRoot, full)) || '.'
+  const scope = scopes.get(realRoot) ?? scopes.get(root)
+  if (scope && rel !== '.' && !scope.some((f) => rel === f || rel.startsWith(`${f}/`))) throw new Error(`${input} is outside the workspace`)
+  return rel
 }
 
 export function assertWritable(rel: string): void {
@@ -112,6 +122,11 @@ export function listFilesTool(root: string, rel: string): string {
 }
 
 export function* walkFiles(root: string, rel = '.'): Generator<string> {
+  const scope = rel === '.' ? scopes.get(root) : undefined
+  if (scope) {
+    for (const folder of scope) yield* walkFiles(root, folder)
+    return
+  }
   let entries: fs.Dirent[]
   try {
     entries = fs.readdirSync(path.join(root, rel), { withFileTypes: true })
@@ -149,15 +164,50 @@ export function searchTool(root: string, query: unknown): string {
 export interface SearchOptions {
   caseSensitive: boolean
   regex: boolean
+  wholeWord?: boolean
+  /** Comma-separated patterns, like src/**, *.ts or docs */
+  include?: string
+  exclude?: string
+}
+
+/** Turns one pattern into a test for a project-relative path. A plain name matches a folder or file anywhere. */
+export function globToRegExp(glob: string): RegExp {
+  let pattern = glob.trim().replace(/^\.\//, '').replace(/\/$/, '')
+  const anchored = pattern.includes('/')
+  let out = ''
+  for (let i = 0; i < pattern.length; i++) {
+    const c = pattern[i]
+    if (c === '*' && pattern[i + 1] === '*') {
+      out += pattern[i + 2] === '/' ? '(?:.*/)?' : '.*'
+      i += pattern[i + 2] === '/' ? 2 : 1
+    } else if (c === '*') out += '[^/]*'
+    else if (c === '?') out += '[^/]'
+    else out += c.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+  }
+  return new RegExp(`${anchored ? '^' : '(?:^|/)'}${out}(?:/|$)`, 'i')
+}
+
+function pathFilter(options: SearchOptions): (rel: string) => boolean {
+  const list = (text?: string) => (text ?? '').split(',').map((g) => g.trim()).filter(Boolean).map(globToRegExp)
+  const include = list(options.include)
+  const exclude = list(options.exclude)
+  return (rel) => (!include.length || include.some((g) => g.test(rel))) && !exclude.some((g) => g.test(rel))
+}
+
+function queryPattern(query: string, options: SearchOptions, flags: string): RegExp {
+  let source = options.regex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  if (options.wholeWord) source = `\\b(?:${source})\\b`
+  return new RegExp(source, flags)
 }
 
 /** Project-wide search for the Search panel. */
 export function searchProject(root: string, query: string, options: SearchOptions, limit = 500): { path: string; line: number; text: string }[] {
   if (!query) return []
-  const source = options.regex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const pattern = new RegExp(source, options.caseSensitive ? '' : 'i')
+  const pattern = queryPattern(query, options, options.caseSensitive ? '' : 'i')
+  const allowed = pathFilter(options)
   const out: { path: string; line: number; text: string }[] = []
   for (const rel of walkFiles(root)) {
+    if (!allowed(rel)) continue
     const file = path.join(root, rel)
     if (fs.statSync(file).size > 1_000_000) continue
     const text = fs.readFileSync(file, 'utf8')
@@ -176,10 +226,11 @@ export function searchProject(root: string, query: string, options: SearchOption
 /** Replaces every match in the project's text files. Returns the new contents, for the caller to review and write. */
 export function replaceInFiles(root: string, query: string, options: SearchOptions, replacement: string): { path: string; content: string; matches: number }[] {
   if (!query) return []
-  const source = options.regex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const count = new RegExp(source, options.caseSensitive ? 'g' : 'gi')
+  const count = queryPattern(query, options, options.caseSensitive ? 'g' : 'gi')
+  const allowed = pathFilter(options)
   const out: { path: string; content: string; matches: number }[] = []
   for (const rel of walkFiles(root)) {
+    if (!allowed(rel)) continue
     const file = path.join(root, rel)
     if (fs.statSync(file).size > 1_000_000) continue
     const text = fs.readFileSync(file, 'utf8')

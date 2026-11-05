@@ -163,12 +163,20 @@ export async function listModels(provider: ProviderId, settings: Settings, key: 
     if (!key) throw new Error('Add your Anthropic API key first.')
     const client = new Anthropic({ apiKey: key, baseURL: settings.baseUrls.anthropic || ANTHROPIC_URL })
     const out: ModelOption[] = []
-    for await (const model of client.models.list()) out.push({ id: model.id })
+    try {
+      for await (const model of client.models.list()) out.push({ id: model.id })
+    } catch (error) {
+      if (error instanceof Anthropic.AuthenticationError) throw new Error('Anthropic rejected this API key. Check it, or remove it and paste it again.')
+      if (error instanceof Anthropic.APIConnectionError) throw new Error("Couldn't reach Anthropic. Check your connection and try again.")
+      throw error
+    }
     return out
   }
   const response = await fetch(`${settings.baseUrls[provider]}/models`, {
     headers: key ? { Authorization: `Bearer ${key}` } : {},
     signal: AbortSignal.timeout(15000)
+  }).catch(() => {
+    throw new Error(`Nothing answered at ${settings.baseUrls[provider]}. Check that the server is running and the address is right.`)
   })
   if (response.status === 401) throw new Error('The server rejected the API key.')
   if (!response.ok) throw new Error(`The server answered ${response.status} when listing models.`)

@@ -49,7 +49,62 @@ interface Item extends monaco.languages.CompletionItem {
 let registered = false
 
 /** Connects the editor to the project-aware engine. `open` shows another file when a jump leaves this one. */
+const wholeFile = (model: monaco.editor.ITextModel, text: string) => (text === model.getValue() ? [] : [{ range: model.getFullModelRange(), text }])
+
+/* Prettier takes over formatting for these languages once a project allows it. */
+let prettierProviders: monaco.IDisposable[] = []
+export function registerProjectFormatter(enabled: boolean): void {
+  prettierProviders.forEach((p) => p.dispose())
+  prettierProviders = []
+  if (!enabled) return
+  for (const language of ['html', 'css', 'scss', 'less', 'json', 'markdown', 'yaml']) {
+    prettierProviders.push(monaco.languages.registerDocumentFormattingEditProvider(language, {
+      displayName: 'Prettier',
+      provideDocumentFormattingEdits: async (model) => {
+        const rel = relOf(model.uri)
+        if (!rel) return []
+        const formatted = await api.tooling<string | null>('format', rel, model.getValue()).catch(() => null)
+        return formatted === null ? [] : wholeFile(model, formatted)
+      }
+    }))
+  }
+}
+
+/** ESLint's own fixes, offered from the light bulb. */
+function registerLintActions(): void {
+  for (const language of ['typescript', 'javascript', 'html']) {
+    monaco.languages.registerCodeActionProvider(language, {
+      provideCodeActions: (model, range) => {
+        const rel = relOf(model.uri)
+        if (!rel) return { actions: [], dispose() {} }
+        const all = store.lintFixes(rel)
+        const here = all.filter((m) => m.fix && m.line <= range.endLineNumber && m.endLine >= range.startLineNumber)
+        const edit = (fix: NonNullable<typeof all[number]['fix']>) => {
+          const from = model.getPositionAt(fix.start)
+          const to = model.getPositionAt(fix.end)
+          return { resource: model.uri, versionId: undefined, textEdit: { range: new monaco.Range(from.lineNumber, from.column, to.lineNumber, to.column), text: fix.text } }
+        }
+        const actions: monaco.languages.CodeAction[] = here.map((m) => ({ title: `Fix: ${m.rule ?? m.message}`, kind: 'quickfix', edit: { edits: [edit(m.fix!)] } }))
+        if (all.some((m) => m.fix)) actions.push({ title: 'Fix all ESLint problems in this file', kind: 'source.fixAll', command: { id: 'anvil.eslintFixAll', title: 'Fix all' } })
+        return { actions, dispose() {} }
+      }
+    })
+  }
+  monaco.editor.registerCommand('anvil.eslintFixAll', () => {
+    const model = monaco.editor.getModels().find((m) => m.isAttachedToEditor() && relOf(m.uri) === store.activePath())
+    if (model) void fixAllLint(model)
+  })
+}
+
+export async function fixAllLint(model: monaco.editor.ITextModel): Promise<void> {
+  const rel = relOf(model.uri)
+  if (!rel) return
+  const fixed = await api.tooling<string | null>('fixAll', rel, model.getValue()).catch(() => null)
+  if (fixed !== null && fixed !== model.getValue()) model.pushEditOperations([], [{ range: model.getFullModelRange(), text: fixed }], () => null)
+}
+
 export function registerIntel(open: (path: string, line: number) => void): void {
+  registerLintActions()
   if (registered) return
   registered = true
 
@@ -129,7 +184,10 @@ export function registerIntel(open: (path: string, line: number) => void): void 
     monaco.languages.registerDocumentFormattingEditProvider(language, {
       provideDocumentFormattingEdits: (model, options) => quiet(async () => {
         const rel = await sync(model)
-        const edits = rel ? await api.intel<IntelEdit[]>('format', rel, options.tabSize) : []
+        if (!rel) return []
+        const formatted = await api.tooling<string | null>('format', rel, model.getValue()).catch(() => null)
+        if (formatted !== null) return wholeFile(model, formatted)
+        const edits = await api.intel<IntelEdit[]>('format', rel, options.tabSize)
         return edits.map((e) => ({ range: range(e), text: e.text }))
       }, [])
     })
