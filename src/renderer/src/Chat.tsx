@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import type { AgentMode, ChatSummary, Checkpoint, ClaudeSessionSummary, Effort, FileChange, OpenAiEffort, Settings, Stats, UiItem } from '../../shared/types'
 import { isCloud, PROVIDER_LABEL } from '../../shared/types'
 import { mdBlocks } from '../../shared/mdblocks'
@@ -16,8 +16,8 @@ const TOOL: Record<string, { label: string; icon: string }> = {
   run_command: { label: 'Run', icon: 'terminal' }
 }
 
-/** Model text is shown as text, never as HTML. */
-function Rich({ text }: { text: string }) {
+/** Model text is shown as text, never as HTML. Finished messages aren't parsed again while a new one streams. */
+const Rich = memo(function Rich({ text }: { text: string }) {
   const parts = text.split(/(```[^\n]*\n[\s\S]*?(?:```|$))/g)
   return (
     <>
@@ -57,7 +57,7 @@ function Rich({ text }: { text: string }) {
       })}
     </>
   )
-}
+})
 
 function inline(text: string): ReactNode[] {
   return text.split(/(`[^`\n]+`|\*\*[^*\n]+\*\*)/g).map((part, i) => {

@@ -55,6 +55,8 @@ export class ChangeTracker {
     this.current = null
     if (!done || done.files.length === 0) return null
     this.checkpoints.push(done)
+    // Older steps stop being undoable as a whole; each file's own Keep and Undo still works.
+    if (this.checkpoints.length > 50) this.checkpoints.shift()
     return { id: done.id, title: done.title, files: done.files, undone: false }
   }
 

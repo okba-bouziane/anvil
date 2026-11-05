@@ -8,6 +8,9 @@ const PREFIX = '/file/'
 interface Entry {
   model: monaco.editor.ITextModel
   saved: string
+  savedVersion: number
+  wasDirty: boolean
+  lspTimer: ReturnType<typeof setTimeout> | null
   view: monaco.editor.ICodeEditorViewState | null
   timer: ReturnType<typeof setTimeout> | null
   intelTimer: ReturnType<typeof setTimeout> | null
@@ -23,6 +26,15 @@ const lints = new Map<string, IntelDiagnostic[]>()
 const lintFixes = new Map<string, LintMessage[]>()
 let toolingOn = false
 export type LspKind = 'python' | 'angular'
+/** Sends a language server the latest text now, so an answer it's about to give isn't out of date. */
+export function flushLspChange(path: string): void {
+  const entry = entries.get(path)
+  if (!entry?.lspTimer) return
+  clearTimeout(entry.lspTimer)
+  entry.lspTimer = null
+  const kind = lspKindOf(path)
+  if (kind) void api.lspChange(kind, path, entry.model.getValue()).catch(() => {})
+}
 let angularProject = false
 const lspProblems = new Map<string, IntelDiagnostic[]>()
 
@@ -42,7 +54,12 @@ const notify = () => {
 
 export const relOf = (uri: monaco.Uri): string | null => (uri.path.startsWith(PREFIX) ? uri.path.slice(PREFIX.length) : null)
 export const uriOf = (path: string) => monaco.Uri.file(`${PREFIX}${path}`)
-const isDirty = (e: Entry) => e.model.getValue() !== e.saved
+// Comparing version numbers, not whole files, keeps typing fast in big files.
+const isDirty = (e: Entry) => e.model.getAlternativeVersionId() !== e.savedVersion
+const markSaved = (e: Entry) => {
+  e.savedVersion = e.model.getAlternativeVersionId()
+  e.wasDirty = false
+}
 
 function setMarkers(path: string, model: monaco.editor.ITextModel, list: IntelDiagnostic[]): void {
   problems.set(path, list)
@@ -158,12 +175,18 @@ export const store = {
     const again = entries.get(path)
     if (again) return again.model
     const model = monaco.editor.createModel(text, undefined, uriOf(path))
-    const entry: Entry = { model, saved: text, view: null, timer: null, intelTimer: null }
+    const entry: Entry = { model, saved: text, savedVersion: model.getAlternativeVersionId(), wasDirty: false, lspTimer: null, view: null, timer: null, intelTimer: null }
     entries.set(path, entry)
     model.onDidChangeContent(() => {
-      notify()
-      const kind = lspKindOf(path)
-      if (kind) void api.lspChange(kind, path, model.getValue()).catch(() => {})
+      // Tab dots only change when a file becomes edited or goes back to its saved state.
+      if (isDirty(entry) !== entry.wasDirty) {
+        entry.wasDirty = !entry.wasDirty
+        notify()
+      }
+      if (lspKindOf(path)) {
+        if (entry.lspTimer) clearTimeout(entry.lspTimer)
+        entry.lspTimer = setTimeout(() => flushLspChange(path), 80)
+      }
       if (entry.intelTimer) clearTimeout(entry.intelTimer)
       entry.intelTimer = setTimeout(() => { void syncIntel(path, entry).catch(() => {}); void syncLint(path, entry).catch(() => {}) }, 350)
       if (entry.timer) clearTimeout(entry.timer)
@@ -186,9 +209,16 @@ export const store = {
     if (!e) return
     if (e.timer) clearTimeout(e.timer)
     const text = e.model.getValue()
-    if (text === e.saved) return
+    const version = e.model.getAlternativeVersionId()
+    if (text === e.saved) {
+      markSaved(e)
+      return
+    }
     await api.writeFile(path, text)
     e.saved = text
+    // Typing during the save leaves the file edited.
+    e.savedVersion = version
+    e.wasDirty = isDirty(e)
     notify()
   },
   async saveAs(path: string, target: string) {
@@ -203,6 +233,8 @@ export const store = {
     const text = await api.readFile(path)
     e.saved = text
     e.model.setValue(text)
+    markSaved(e)
+    notify()
   },
   async saveAll() {
     await Promise.all([...entries.keys()].map((p) => store.save(p)))
@@ -217,6 +249,8 @@ export const store = {
         if (text !== entry.saved) {
           entry.saved = text
           if (entry.model.getValue() !== text) entry.model.setValue(text)
+          markSaved(entry)
+          notify()
         }
       } catch {
         /* the file is gone; its tab is closed separately */

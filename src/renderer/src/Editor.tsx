@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { BlameLine, EditorSettings, FileChange, Hunk } from '../../shared/types'
 import { diffLines } from 'diff'
+import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { findConflicts, resolvedLines, type ConflictBlock, type ConflictChoice } from '../../shared/conflicts'
 import { blockPatch } from '../../shared/patch'
@@ -454,7 +455,7 @@ function MarkdownPreview({ path }: { path: string }) {
     void store.ensure(path).then((m) => {
       if (stale) return
       model = m
-      const render = () => setHtml(marked.parse(m.getValue(), { async: false }) as string)
+      const render = () => setHtml(DOMPurify.sanitize(marked.parse(m.getValue(), { async: false }) as string))
       render()
       sub = m.onDidChangeContent(render)
     }).catch(() => {})

@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import ts from 'typescript'
+import { parse as parseJsonc } from 'jsonc-parser'
 
 /**
  * A workspace is several folders open together. They appear under their nearest shared folder, which is what the
@@ -22,7 +22,7 @@ export function commonParent(folders: string[]): string {
 
 /** Reads a .code-workspace file, the same format VS Code uses. Relative paths are relative to the file. */
 export function readWorkspaceFile(file: string): string[] {
-  const data = ts.parseConfigFileTextToJson(file, fs.readFileSync(file, 'utf8')).config as { folders?: { path?: unknown }[] } | undefined
+  const data = parseJsonc(fs.readFileSync(file, 'utf8')) as { folders?: { path?: unknown }[] } | undefined
   const folders = (data?.folders ?? []).flatMap((f) => (typeof f.path === 'string' ? [path.resolve(path.dirname(file), f.path)] : []))
   const existing = folders.filter((f) => fs.existsSync(f) && fs.statSync(f).isDirectory())
   if (!existing.length) throw new Error('This workspace has no folders that exist on this computer.')
@@ -63,7 +63,7 @@ export const outOfRepo = (repo: string, rel: string) => (repo === '.' ? rel : `$
 
 function readJsonc(file: string): Record<string, unknown> | null {
   try {
-    return ts.parseConfigFileTextToJson(file, fs.readFileSync(file, 'utf8')).config ?? null
+    return parseJsonc(fs.readFileSync(file, 'utf8')) ?? null
   } catch {
     return null
   }

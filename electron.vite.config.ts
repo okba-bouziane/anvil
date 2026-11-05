@@ -2,7 +2,7 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  main: { plugins: [externalizeDepsPlugin()], build: { rollupOptions: { input: { index: 'src/main/index.ts', 'intel-worker': 'src/main/intel-worker.ts', 'tooling-worker': 'src/main/tooling-worker.ts' } } } },
+  main: { plugins: [externalizeDepsPlugin()], build: { rollupOptions: { input: { index: 'src/main/index.ts', 'intel-worker': 'src/main/intel-worker.ts', 'tooling-worker': 'src/main/tooling-worker.ts', 'search-worker': 'src/main/search-worker.ts' } } } },
   preload: { plugins: [externalizeDepsPlugin()], build: { rollupOptions: { output: { format: 'cjs', entryFileNames: '[name].js' } } } },
   renderer: {
     plugins: [

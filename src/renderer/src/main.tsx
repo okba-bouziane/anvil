@@ -1,3 +1,4 @@
+import { Component, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import './styles.css'
@@ -17,4 +18,23 @@ window.addEventListener('error', (e) => {
 // The terminal measures its font once, when it opens, so have the font ready by then.
 void document.fonts.load("12px 'JetBrains Mono'")
 
-createRoot(document.getElementById('root')!).render(<App />)
+/** Saved work is on disk or in the recovery copy, so reloading is the safe way out of a broken screen. */
+class CrashScreen extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null }
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+  render() {
+    if (!this.state.error) return this.props.children
+    return (
+      <div className="crash" role="alert">
+        <h1>Something broke in this window</h1>
+        <p>Reload to keep working. Your files and chats are saved.</p>
+        <button className="primary" onClick={() => window.location.reload()}>Reload</button>
+        <pre>{this.state.error.message}</pre>
+      </div>
+    )
+  }
+}
+
+createRoot(document.getElementById('root')!).render(<CrashScreen><App /></CrashScreen>)

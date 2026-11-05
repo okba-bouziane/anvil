@@ -247,7 +247,7 @@ export type AgentEvent =
   | { type: 'file-changed'; path: string }
   | { type: 'context'; tokens: number; limit: number }
   | { type: 'chats'; chats: ChatSummary[]; activeChat: string }
-  | { type: 'tree' }
+  | { type: 'tree'; filesChanged?: boolean }
   | { type: 'update'; version: string; url: string; canInstall: boolean }
   | { type: 'update-progress'; percent: number }
   | { type: 'menu'; id: string }
@@ -483,6 +483,7 @@ export interface AnvilApi {
   renamePath(from: string, to: string): Promise<void>
   deletePath(path: string): Promise<void>
   searchProject(query: string, options: SearchOptions): Promise<SearchHit[]>
+  filesExist(paths: string[]): Promise<string[]>
   gitStatus(): Promise<GitStatus>
   gitInit(): Promise<void>
   gitStage(paths: string[], stage: boolean): Promise<void>

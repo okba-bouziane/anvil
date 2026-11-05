@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import type { ChatSummary, Checkpoint, FileChange, ImportedAssets, IntelDiagnostic, ModelStatus, ProjectState, ScriptEntry, Settings, UiItem } from '../../shared/types'
 import { DEFAULT_SETTINGS, PROVIDER_LABEL } from '../../shared/types'
 import { ChangesBar, Chat } from './Chat'
@@ -11,9 +11,14 @@ import { debug } from './debugStore'
 import { fixAllLint, registerIntel, registerProjectFormatter, registerSnippets } from './intel'
 import { defineImportedTheme, importedThemeName, monaco } from './monaco'
 import { store } from './models'
-import { SettingsModal, type SettingsTab } from './Settings'
+import type { SettingsTab } from './Settings'
 import { Sidebar, type SidebarTab } from './Sidebar'
-import { TerminalPanel, type PanelView } from './Terminal'
+import type { PanelView } from './Terminal'
+import { fuzzyFilter } from '../../shared/fuzzy'
+
+// Loaded on first use, so opening the app doesn't wait for them.
+const SettingsModal = lazy(() => import('./Settings').then((m) => ({ default: m.SettingsModal })))
+const TerminalPanel = lazy(() => import('./Terminal').then((m) => ({ default: m.TerminalPanel })))
 
 const api = window.anvil
 const STATUS_LABEL: Record<ModelStatus, string> = { online: 'Ready', offline: 'Off', starting: 'Starting…', nokey: 'Needs API key' }
@@ -22,8 +27,7 @@ function QuickOpen({ files, onPick, onClose }: { files: string[]; onPick(path: s
   const [query, setQuery] = useState('')
   const [at, setAt] = useState(0)
   const matches = useMemo(() => {
-    const q = query.toLowerCase()
-    return files.filter((f) => f.toLowerCase().includes(q)).slice(0, 12)
+    return fuzzyFilter(query, files)
   }, [query, files])
   return (
     <div className="modal-wrap top" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
@@ -348,8 +352,7 @@ export function App() {
     setTabs([])
     tabsRestored.current = false
     void api.uiGet<{ tabs?: string[]; selected?: string | null }>(`tabs:${state.workspaceFile ?? state.root}`).then(async (remembered) => {
-      const found = await Promise.all((remembered?.tabs ?? []).map((t) => api.readFile(t).then(() => t, () => null)))
-      const list = found.filter((t): t is string => !!t)
+      const list = await api.filesExist(remembered?.tabs ?? [])
       setTabs((open) => [...new Set([...list, ...open])])
       setSelected((current) => current ?? (remembered?.selected && list.includes(remembered.selected) ? remembered.selected : list[list.length - 1] ?? null))
     }).finally(() => { tabsRestored.current = true })
@@ -424,7 +427,7 @@ export function App() {
           break
         case 'tree':
           setRevision((r) => r + 1)
-          void api.listFiles().then(setFiles).catch(() => {})
+          if (event.filesChanged) void api.listFiles().then(setFiles).catch(() => {})
           break
         case 'context':
           setContext({ tokens: event.tokens, limit: event.limit })
@@ -760,7 +763,7 @@ export function App() {
                   </>
                 )}
               </div>
-              <TerminalPanel open={terminalOpen} splitSignal={splitShell} onOpenPath={openAt} view={panelView} setView={setPanelView} projectKey={project.root} command={terminalCommand} dark={dark} problems={problems} revision={revision} historyFile={historyFile} onClearHistoryFile={() => setHistoryFile(null)} onOpenCommitDiff={openCommitDiff} onOpenProblem={openAt} onRefreshProblems={refreshProblems} onCommandDone={clearCommand} onClose={() => setTerminalOpen(false)} onError={onError} />
+              <Suspense fallback={null}><TerminalPanel open={terminalOpen} splitSignal={splitShell} onOpenPath={openAt} view={panelView} setView={setPanelView} projectKey={project.root} command={terminalCommand} dark={dark} problems={problems} revision={revision} historyFile={historyFile} onClearHistoryFile={() => setHistoryFile(null)} onOpenCommitDiff={openCommitDiff} onOpenProblem={openAt} onRefreshProblems={refreshProblems} onCommandDone={clearCommand} onClose={() => setTerminalOpen(false)} onError={onError} /></Suspense>
               {!showAgent && changes.length > 0 && <div className="changes-dock"><ChangesBar changes={changes} selected={selected} onOpen={openFile} onError={onError} /></div>}
             </div>
             <Splitter
@@ -800,7 +803,7 @@ export function App() {
       {taskPicker && <CommandPalette commands={taskPicker} placeholder="Choose a task to run" onClose={() => setTaskPicker(null)} />}
       {showShortcuts && <Shortcuts commands={commands} onClose={() => setShowShortcuts(false)} />}
       {prompt && <NamePrompt title={prompt.title} placeholder={prompt.placeholder} initial={prompt.initial} onDone={prompt.run} onClose={() => setPrompt(null)} />}
-      {modal && settings && <SettingsModal settings={settings} initial={modal} assets={assets} onImported={loadAssets} onSettings={update} onStatus={poll} onClose={() => setModal(null)} onError={onError} hasProject={!!project} onRunInTerminal={(command) => { setModal(null); setTerminalOpen(true); setTerminalCommand(command) }} />}
+      {modal && settings && <Suspense fallback={null}><SettingsModal settings={settings} initial={modal} assets={assets} onImported={loadAssets} onSettings={update} onStatus={poll} onClose={() => setModal(null)} onError={onError} hasProject={!!project} onRunInTerminal={(command) => { setModal(null); setTerminalOpen(true); setTerminalCommand(command) }} /></Suspense>}
     </div>
   )
 }

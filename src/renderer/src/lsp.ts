@@ -1,5 +1,5 @@
 import { monaco } from './monaco'
-import { lspKindOf, relOf, store, uriOf, type LspKind } from './models'
+import { flushLspChange, lspKindOf, relOf, store, uriOf, type LspKind } from './models'
 
 const api = window.anvil
 
@@ -87,6 +87,8 @@ export function registerLsp(): void {
       provideCompletionItems: (model, position) => quiet(async () => {
         const target = kindFor(model, position)
         if (!target) return { suggestions: [] }
+        const rel = relOf(model.uri)
+        if (rel) flushLspChange(rel)
         const result = await api.lspRequest<{ isIncomplete?: boolean; items?: LItem[] } | LItem[] | null>(target.kind, 'textDocument/completion', target.rel, { position: toPos(position) })
         const items = Array.isArray(result) ? result : result?.items ?? []
         const word = model.getWordUntilPosition(position)

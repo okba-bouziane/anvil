@@ -16,7 +16,7 @@ import { Secrets } from './secrets'
 import { claudeFolderFor, claudeSessionFile, listClaudeSessions, readClaudeSession } from './claude-import'
 import { loadSession, saveSession, type Chat } from './session'
 import { canRunMlx } from './platform'
-import { assertWritable, findScripts, replaceInFiles, safePath, searchProject, setScope, walkFiles, type SearchOptions } from './tools'
+import { assertWritable, safePath, setScope, type SearchOptions } from './tools'
 import { Worker } from 'node:worker_threads'
 import { isCloud } from '../shared/types'
 import { Terminals } from './terminal'
@@ -191,6 +191,10 @@ function lspClient(kind: LspKind): LspClient {
 }
 
 let debugSession: Debugger | null = null
+// A problem in the background shouldn't take unsaved work down with it. It's noted in a local file only.
+process.on('uncaughtException', (err) => logProblem('Uncaught', err))
+process.on('unhandledRejection', (err) => logProblem('Unhandled', err))
+let treeChanged = false
 const jsDebugDir = () => (app.isPackaged ? path.join(process.resourcesPath, 'js-debug') : path.join(app.getAppPath(), 'resources/js-debug'))
 
 let suggestAbort: AbortController | null = null
@@ -223,13 +227,16 @@ function watchProject(root: string, folders: string[] | null): void {
   watchers = []
   for (const folder of folders ?? ['.']) {
     try {
-      const watcher = fs.watch(path.join(root, folder), { recursive: true }, (_event, name) => {
+      const watcher = fs.watch(path.join(root, folder), { recursive: true }, (event, name) => {
+        if (event === 'rename') treeChanged = true
         const rel = String(name ?? '').replaceAll('\\', '/')
         if (/(^|\/)node_modules\//.test(rel) || /(^|\/)(dist|out|\.next|\.angular|coverage)\//.test(rel)) return
         if (/(^|\/)\.git\//.test(rel) && !/(^|\/)\.git\/(HEAD|index|refs\/|MERGE_HEAD|REBASE_HEAD)/.test(rel)) return
         if (watchTimer) clearTimeout(watchTimer)
         watchTimer = setTimeout(() => {
-          send({ type: 'tree' })
+          // Only a file being added, removed or renamed changes the list of files.
+          send({ type: 'tree', filesChanged: treeChanged })
+          treeChanged = false
           if (project?.tracker.list().length) sendChanges()
         }, 350)
       })
@@ -430,11 +437,59 @@ function queueText(id: string, delta: string): void {
   textTimer ??= setTimeout(flushText, 90)
 }
 
+function logProblem(where: string, err: unknown): void {
+  const text = err instanceof Error ? err.stack ?? err.message : String(err)
+  try {
+    fs.appendFileSync(path.join(dataDir(), 'crash.log'), `${new Date().toISOString()} ${where}: ${text}\n`)
+  } catch {
+    /* nowhere to write it */
+  }
+}
+
+let runningSearch: Worker | null = null
+let finishSearch: ((value: never[]) => void) | null = null
+
+/** Runs a job that reads the whole project away from the main process, so the app stays responsive. */
+function inWorker<T>(method: string, args: unknown[], cancelsLast = false): Promise<T> {
+  const p = need()
+  if (cancelsLast && runningSearch) {
+    void runningSearch.terminate()
+    finishSearch?.([])
+    runningSearch = null
+  }
+  return new Promise<T>((resolve, reject) => {
+    const worker = new Worker(path.join(__dirname, 'search-worker.js'), { workerData: { root: p.root, folders: p.folders, method, args } })
+    if (cancelsLast) {
+      runningSearch = worker
+      finishSearch = resolve as unknown as (value: never[]) => void
+    }
+    worker.once('message', (message: { result?: T; error?: string; name?: string }) => {
+      if (runningSearch === worker) runningSearch = null
+      void worker.terminate()
+      if (message.error !== undefined) {
+        const failure = new Error(message.error)
+        failure.name = message.name ?? 'Error'
+        reject(failure)
+      } else resolve(message.result as T)
+    })
+    worker.once('error', (err) => {
+      if (runningSearch === worker) runningSearch = null
+      reject(err)
+    })
+  })
+}
+
 function save(now = false): void {
   if (!project) return
   if (saveTimer) clearTimeout(saveTimer)
   const p = project
-  const write = () => saveSession(sessionsDir(), p.root, { chats: p.chats, activeChat: p.active.id, changes: p.tracker.toJSON() })
+  const write = () => {
+    try {
+      saveSession(sessionsDir(), p.root, { chats: p.chats, activeChat: p.active.id, changes: p.tracker.toJSON() })
+    } catch (err) {
+      logProblem('Saving chats', err)
+    }
+  }
   if (now) write()
   else saveTimer = setTimeout(write, 500)
 }
@@ -582,6 +637,7 @@ const modelLog = () => path.join(dataDir(), 'model-server.log')
 const status = (): Promise<ModelStatus> => modelStatus(settings, settings.provider === 'local' || secrets.has(settings.provider))
 
 function activate(p: Project, chat: Chat): ProjectState {
+  save(true) // the chat being left has the only unsaved messages
   p.active = chat
   p.agent = makeAgent(p.root, p.tracker, chat, p.allowed)
   save(true)
@@ -608,7 +664,9 @@ function handlers() {
 
   handle('getSettings', () => settings)
   handle('setSettings', (patch: Partial<Settings>) => {
-    settings = { ...settings, ...patch }
+    // Trusting a project has its own step, so a settings change can't grant it.
+    const { trustedProjects: _trusted, ...allowed } = patch
+    settings = { ...settings, ...allowed }
     writeSettings()
     return settings
   })
@@ -749,13 +807,16 @@ function handlers() {
       .map((e) => ({ name: e.name, path: dir === '.' ? e.name : `${dir}/${e.name}`, isDir: e.isDirectory() }))
       .sort((a, b) => Number(b.isDir) - Number(a.isDir) || a.name.localeCompare(b.name))
   })
-  handle('listFiles', () => {
-    const out: string[] = []
-    for (const rel of walkFiles(need().root)) {
-      out.push(rel)
-      if (out.length >= 5000) break
-    }
-    return out
+  handle('listFiles', () => inWorker<string[]>('listFiles', [50_000]))
+  handle('filesExist', (rels: string[]) => {
+    const p = need()
+    return rels.filter((rel) => {
+      try {
+        return fs.statSync(path.join(p.root, safePath(p.root, rel))).isFile()
+      } catch {
+        return false
+      }
+    })
   })
   handle('readFile', (rel: string) => {
     const p = need()
@@ -806,11 +867,11 @@ function handlers() {
     p.tracker.forgetUnder(safe)
     treeChanged()
   })
-  handle('searchProject', (query: string, options: SearchOptions) => {
+  handle('searchProject', async (query: string, options: SearchOptions) => {
     try {
-      return searchProject(need().root, query, options)
+      return await inWorker('searchProject', [query, options], true)
     } catch (err) {
-      if (err instanceof SyntaxError) throw new Error('That search pattern is not valid')
+      if ((err as Error).name === 'SyntaxError') throw new Error('That search pattern is not valid')
       throw err
     }
   })
@@ -869,15 +930,15 @@ function handlers() {
     return { original: await git.indexVersion(target.dir, target.rel), modified: fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '' }
   })
   handle('intel', (method: string, ...args: unknown[]) => intelCall(method, args))
-  handle('listScripts', () => findScripts(need().root))
-  handle('replaceInProject', (query: string, options: SearchOptions, replacement: string) => {
+  handle('listScripts', () => inWorker('findScripts', []))
+  handle('replaceInProject', async (query: string, options: SearchOptions, replacement: string) => {
     const p = need()
     notBusy()
-    let results
+    let results: { path: string; content: string; matches: number }[]
     try {
-      results = replaceInFiles(p.root, query, options, replacement)
+      results = await inWorker('replaceInFiles', [query, options, replacement])
     } catch (err) {
-      if (err instanceof SyntaxError) throw new Error('That search pattern is not valid')
+      if ((err as Error).name === 'SyntaxError') throw new Error('That search pattern is not valid')
       throw err
     }
     // Replacing goes through review like any other change, so it can be undone.
@@ -1220,6 +1281,14 @@ function createWindow(): void {
     title: 'Anvil',
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 16, y: 16 } } : { autoHideMenuBar: true }),
     webPreferences: { preload: path.join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true, nodeIntegration: false }
+  })
+  win.webContents.on('render-process-gone', (_event, details) => {
+    if (details.reason === 'clean-exit') return
+    logProblem('Window', details.reason)
+    void dialog.showMessageBox(win!, { type: 'error', message: 'This window stopped working', detail: 'Reload to keep working. Your files and chats are saved.', buttons: ['Reload', 'Quit'], defaultId: 0 }).then(({ response }) => {
+      if (response === 0) win?.webContents.reload()
+      else app.quit()
+    })
   })
   win.on('close', () => {
     if (projectArg || process.env.ANVIL_DATA_DIR || !win) return

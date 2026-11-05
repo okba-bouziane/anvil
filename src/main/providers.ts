@@ -1,4 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -19,6 +18,7 @@ export function createAnthropicClient(getSettings: () => Settings, getKey: () =>
       const settings = getSettings()
       const apiKey = getKey()
       if (!apiKey) throw new Error('Add your Anthropic API key in Settings first.')
+      const { default: Anthropic } = await import('@anthropic-ai/sdk')
       const client = new Anthropic({ apiKey, baseURL: settings.baseUrls.anthropic || ANTHROPIC_URL })
       const model = settings.models.anthropic
       const started = Date.now()
@@ -161,6 +161,7 @@ export async function listModels(provider: ProviderId, settings: Settings, key: 
   if (provider === 'local') return localModels()
   if (provider === 'anthropic') {
     if (!key) throw new Error('Add your Anthropic API key first.')
+    const { default: Anthropic } = await import('@anthropic-ai/sdk')
     const client = new Anthropic({ apiKey: key, baseURL: settings.baseUrls.anthropic || ANTHROPIC_URL })
     const out: ModelOption[] = []
     try {

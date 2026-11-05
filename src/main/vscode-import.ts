@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import ts from 'typescript'
+import { parse as parseJsonc } from 'jsonc-parser'
 import type { EditorSettings, ImportedAssets, ImportedSnippet, ImportedTheme, Settings, VscodeImport } from '../shared/types'
 
 const MAX_FILE = 2_000_000
@@ -25,7 +25,7 @@ export function vscodePaths(): VscodePaths {
 function readJsonc(file: string): any {
   try {
     if (fs.statSync(file).size > MAX_FILE) return null
-    return ts.parseConfigFileTextToJson(file, fs.readFileSync(file, 'utf8')).config ?? null
+    return parseJsonc(fs.readFileSync(file, 'utf8')) ?? null
   } catch {
     return null
   }
