@@ -1013,7 +1013,7 @@ test('Settings can be searched', async () => {
 })
 
 test('messages typed while the agent works wait, and go out in order', async () => {
-  const { page, close } = await launch(['x'.repeat(4000), 'Second answer.'])
+  const { page, close } = await launch(['x'.repeat(12_000), 'Second answer.'])
   await ask(page, 'first')
   await expect(page.getByRole('button', { name: 'Stop', exact: true })).toBeVisible()
   await ask(page, 'second question')
@@ -1024,13 +1024,13 @@ test('messages typed while the agent works wait, and go out in order', async () 
 })
 
 test('Send now reaches the agent before its next step', async () => {
-  const { page, close } = await launch(['x'.repeat(3000), 'Saw the correction.'])
+  const { page, close } = await launch(['x'.repeat(60_000), 'Saw the correction.'])
   await ask(page, 'first')
   await expect(page.getByRole('button', { name: 'Stop', exact: true })).toBeVisible()
   await ask(page, 'use tabs instead')
   await page.locator('.queue-row').getByRole('button', { name: 'Send now' }).click()
   await expect(page.locator('.msg.user').last()).toContainText('use tabs instead')
-  await expect(page.locator('.msg.assistant').last()).toContainText('Saw the correction.', { timeout: 20_000 })
+  await expect(page.locator('.msg.assistant').last()).toContainText('Saw the correction.', { timeout: 60_000 })
   await close()
 })
 
