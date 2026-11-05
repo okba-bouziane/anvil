@@ -1046,7 +1046,8 @@ test('Go to File finds a file by scattered letters', async () => {
   await close()
 })
 
-test.skip(process.platform === 'win32', 'The stand-in below is a shell script')('the Claude Code button opens the tool in the terminal, or offers the guide', async () => {
+test('the Claude Code button opens the tool in the terminal', async () => {
+  test.skip(process.platform === 'win32', 'The stand-in below is a shell script')
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-data-'))
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-proj-')))
   const home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pitoo-home-')))
